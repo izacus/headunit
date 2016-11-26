@@ -400,8 +400,10 @@ static int switch_device_to_oap_mode()
 
     // Keep the reference to our best device so free_device_list won't
     // close it.
-    if (best_device)
+    if (best_device) {
         libusb_ref_device(best_device);
+    }
+
     libusb_free_device_list(list, 1);
 
     // We should have the best vendor now.
@@ -409,7 +411,7 @@ static int switch_device_to_oap_mode()
     {
         // No device found.
         loge("No Android device ready for Android Auto has been found on USB.");
-        return -1;
+        return RESULT_FAIL;
     }
 
     // Check if device is already in OAC mode
@@ -421,13 +423,13 @@ static int switch_device_to_oap_mode()
 
     logd("Switching device 0x%04x / 0x%04x into accessory mode...", best_vendor, best_product);
     result = iusb_oap_start(best_device);
-    if (result < 0)
-    {
+    libusb_unref_device(best_device);
+
+    if (result < 0) {
         loge("Failed to switch device into OAP mode!");
-        return -1;
+        return RESULT_FAIL;
     }
 
-    libusb_unref_device(best_device);
     return RESULT_OK;
 }
 
@@ -442,13 +444,13 @@ static int is_device_in_oap_mode_present()
 
     libusb_device **list;
     int device_count = libusb_get_device_list(NULL, &list);
-    if (result < 0)
+    if (device_count < 0)
     {
         loge("Failed to retrieve device list - %d (%s).", result, iusb_error_get(result));
         return RESULT_FAIL;
     }
 
-    logd("Got %d USB devices.", result);
+    logd("Got %d USB devices.", device_count);
 
     // Enumerate devices and check if one with Google ID exists.
     int product_id = RESULT_FAIL;
@@ -500,27 +502,23 @@ int hu_usb_start()
     // Ok, the library is set up now. Check if we have a device connected in OAC mode
     // and attempt to kick it into that mode if not.
     int product_id = is_device_in_oap_mode_present();
-    if (product_id < 0)
-    {
+
+    int retry_count = 60;
+    while (product_id < 0) {
         result = switch_device_to_oap_mode();
-        ms_sleep(200);
+        ms_sleep(50);
 
-        int wait_count_timeout = 20; // Wait for 10 seconds for device to come back in OAP mode.
-        // Wait for device to come back as an OAP device.
-
-        while ((product_id = is_device_in_oap_mode_present()) < 0)
-        {
-            logd("Waiting for device in OAP mode...");
-            ms_sleep(500);
-
-            if (wait_count_timeout <= 0)
-            {
-                loge("Timed out when waiting for device to enter OAP mode!");
-                iusb_state = hu_STATE_STOPPED;
-                return RESULT_FAIL;
+        if (result == RESULT_OK) {
+            int wait_count_timeout = 20;        // Wait for 10 secs max for device to come back in OAP mode
+            while ((product_id = is_device_in_oap_mode_present()) < 0) {
+                logd("Waiting for device in OAP mode...");
+                ms_sleep(500);
             }
+        }
 
-            wait_count_timeout--;
+        if (product_id < 0) {
+            retry_count--;
+            ms_sleep(1000);
         }
     }
 
