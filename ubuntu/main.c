@@ -526,21 +526,20 @@ int nightmode = 0;
 
 //COMMANDER
 //UP:
-uint8_t cd_up1[] = { -128,0x01,0x08,0,0,0,0,0,0,0,0,0x14,0x22,0x0A,0x0A,0x08,0x08,0x13,0x10,0x01,0x18,0x00,0x20,0x00 };
-uint8_t cd_up2[] = { -128,0x01,0x08,0,0,0,0,0,0,0,0,0x14,0x22,0x0A,0x0A,0x08,0x08,0x13,0x10,0x00,0x18,0x00,0x20,0x00 };
+uint8_t cd_up1[] = { 0x80, 0x01, 0x08, 0xa8, 0xfc, 0xe1, 0xde, 0xf8, 0x87, 0xd3, 0xc3, 0x14, 0x22, 0x0a, 0x0a, 0x08, 0x08, 0x13, 0x10, 0x01, 0x18, 0x00, 0x20, 0x00 };
+uint8_t cd_up2[] = { 0x80, 0x01, 0x08, 0xe8, 0xfe, 0xdb, 0xba, 0xf9, 0x87, 0xd3, 0xc3, 0x14, 0x22, 0x0a, 0x0a, 0x08, 0x08, 0x13, 0x10, 0x00, 0x18, 0x00, 0x20, 0x00 };
 
 //DOWN:
-uint8_t cd_down1[] = { -128,0x01,0x08,0,0,0,0,0,0,0,0,0x14,0x22,0x0A,0x0A,0x08,0x08,0x14,0x10,0x01,0x18,0x00,0x20,0x00 };
-uint8_t cd_down2[] = { -128,0x01,0x08,0,0,0,0,0,0,0,0,0x14,0x22,0x0A,0x0A,0x08,0x08,0x14,0x10,0x00,0x18,0x00,0x20,0x00 };
-
+uint8_t cd_down1[] = { 0x80, 0x01, 0x08, 0xe8, 0xbb, 0xbe, 0xad, 0xde, 0x87, 0xd3, 0xc3, 0x14, 0x22, 0x0a, 0x0a, 0x08, 0x08, 0x14, 0x10, 0x01, 0x18, 0x00, 0x20, 0x00 };
+uint8_t cd_down2[] = { 0x80, 0x01, 0x08, 0xf8, 0x93, 0xd8, 0xe9, 0xde, 0x87, 0xd3, 0xc3, 0x14, 0x22, 0x0a, 0x0a, 0x08, 0x08, 0x14, 0x10, 0x00, 0x18, 0x00, 0x20, 0x00 };
 
 //LEFT:
-uint8_t cd_left1[] = { -128,0x01,0x08,0,0,0,0,0,0,0,0,0x14,0x22,0x0A,0x0A,0x08,0x08,0x15,0x10,0x01,0x18,0x00,0x20,0x00 };
-uint8_t cd_left2[] = { -128,0x01,0x08,0,0,0,0,0,0,0,0,0x14,0x22,0x0A,0x0A,0x08,0x08,0x15,0x10,0x00,0x18,0x00,0x20,0x00 };
+uint8_t cd_left1[] = { 0x80, 0x01, 0x08, 0xe8, 0xf2, 0x97, 0xab, 0x86, 0x88, 0xd3, 0xc3, 0x14, 0x22, 0x0a, 0x0a, 0x08, 0x08, 0x15, 0x10, 0x01, 0x18, 0x00, 0x20, 0x00 };
+uint8_t cd_left2[] = { 0x80, 0x01, 0x08, 0xc8, 0xdd, 0xd0, 0x86, 0x87, 0x88, 0xd3, 0xc3, 0x14, 0x22, 0x0a, 0x0a, 0x08, 0x08, 0x15, 0x10, 0x00, 0x18, 0x00, 0x20, 0x00 };
 
 //RIGHT
-uint8_t cd_right1[] = { -128,0x01,0x08,0,0,0,0,0,0,0,0,0x14,0x22,0x0A,0x0A,0x08,0x08,0x16,0x10,0x01,0x18,0x00,0x20,0x00 };
-uint8_t cd_right2[] = { -128,0x01,0x08,0,0,0,0,0,0,0,0,0x14,0x22,0x0A,0x0A,0x08,0x08,0x16,0x10,0x00,0x18,0x00,0x20,0x00 };
+uint8_t cd_right1[] = { 0x80, 0x01, 0x08, 0xc0, 0xc4, 0xe5, 0x86, 0xed, 0x87, 0xd3, 0xc3, 0x14, 0x22, 0x0a, 0x0a, 0x08, 0x08, 0x15, 0x10, 0x01, 0x18, 0x00, 0x20, 0x00 };
+uint8_t cd_right2[] = { 0x80, 0x01, 0x08, 0xc8, 0xeb, 0xc3, 0xbb, 0xed, 0x87, 0xd3, 0xc3, 0x14, 0x22, 0x0a, 0x0a, 0x08, 0x08, 0x15, 0x10, 0x00, 0x18, 0x00, 0x20, 0x00 };
 
 //LEFT turn
 uint8_t cd_lefturn[] = { -128,0x01,0x08,0,0,0,0,0,0,0,0,0x14,0x32,0x11,0x0A,0x0F,0x08,-128,-128,0x04,0x10,-1,-1,-1,-1,-1,-1,-1,-1,-1,0x01 };
@@ -578,125 +577,124 @@ gboolean sdl_poll_event(gpointer data)
 	SDL_Event event;
 	SDL_MouseButtonEvent *mbevent;
 	SDL_KeyboardEvent *key;
+	char* cmdkey;
+
 	struct timespec tp;
 
 	int ret;
 
 	if (SDL_PollEvent(&event) >= 0) {
 		switch (event.type) {
-		case SDL_MOUSEMOTION:	
-			break;
-		case SDL_MOUSEBUTTONDOWN:
-			mbevent = &event.button;
-			if (mbevent->button == SDL_BUTTON_LEFT) {
-				ret = aa_touch_event(ACTION_DOWN, (int)((float)mbevent->x ), (int)((float)mbevent->y));
-				if (ret == -1) {
+			case SDL_MOUSEMOTION:	
+				break;
+			case SDL_MOUSEBUTTONDOWN:
+				mbevent = &event.button;
+				if (mbevent->button == SDL_BUTTON_LEFT) {
+					ret = aa_touch_event(ACTION_DOWN, (int)((float)mbevent->x ), (int)((float)mbevent->y));
+					if (ret == -1) {
+						g_main_loop_quit(app->loop);
+						SDL_Quit();
+						return FALSE;
+					}
+				}
+				break;
+			case SDL_MOUSEBUTTONUP:
+				mbevent = &event.button;
+				if (mbevent->button == SDL_BUTTON_LEFT) {
+					ret = aa_touch_event(ACTION_UP, (int)((float)mbevent->x), (int)((float)mbevent->y));
+					if (ret == -1) {
+						g_main_loop_quit(app->loop);
+						SDL_Quit();
+						return FALSE;
+					}
+				} else if (mbevent->button == SDL_BUTTON_RIGHT) {
+					printf("Quitting...\n");
 					g_main_loop_quit(app->loop);
-					SDL_Quit();
 					return FALSE;
 				}
-			}
-			break;
-		case SDL_MOUSEBUTTONUP:
-			mbevent = &event.button;
-			if (mbevent->button == SDL_BUTTON_LEFT) {
-				ret = aa_touch_event(ACTION_UP, (int)((float)mbevent->x), (int)((float)mbevent->y));
-				if (ret == -1) {
-					g_main_loop_quit(app->loop);
-					SDL_Quit();
-					return FALSE;
-				}
-			} else if (mbevent->button == SDL_BUTTON_RIGHT) {
-				printf("Quitting...\n");
-				g_main_loop_quit(app->loop);
-//				SDL_Quit();
-				return FALSE;
-			}
-			break;
+				break;
 			case SDL_KEYDOWN:
 				PrintKeyInfo( &event.key );
 				key = &event.key;
-				char *cmdkey = SDL_GetKeyName( key->keysym.sym );
+				cmdkey = SDL_GetKeyName( key->keysym.sym );
 				if (strcmp(cmdkey, "up") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
 					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_up1,3);
 					hu_aap_enc_send (0,AA_CH_TOU, cd_up1, sizeof(cd_up1));
-					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_up2,3);
-					hu_aap_enc_send (0,AA_CH_TOU, cd_up2, sizeof(cd_up2));
-				}			
-				if (strcmp(cmdkey, "down") == 0) {
+				} else if (strcmp(cmdkey, "down") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
 					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_down1,3);
 					hu_aap_enc_send (0,AA_CH_TOU, cd_down1, sizeof(cd_down1));
-					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_down2,3);
-					hu_aap_enc_send (0,AA_CH_TOU, cd_down2, sizeof(cd_down2));
-				}
-								
-				if (strcmp(cmdkey, "left") == 0) {
+				} else if (strcmp(cmdkey, "left") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
 					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_left1,3);
 					hu_aap_enc_send (0,AA_CH_TOU, cd_left1, sizeof(cd_left1));
-					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_left2,3);
-					hu_aap_enc_send (0,AA_CH_TOU, cd_left2, sizeof(cd_left2));
-				}
-				
-				if (strcmp(cmdkey, "right") == 0) {
+				} else if (strcmp(cmdkey, "right") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
 					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_right1,3);
 					hu_aap_enc_send (0,AA_CH_TOU, cd_right1, sizeof(cd_right1));
-					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_right2,3);
-					hu_aap_enc_send (0,AA_CH_TOU, cd_right2, sizeof(cd_right2));
-				}
-				
-				if (strcmp(cmdkey, "1") == 0) {
+				} else if (strcmp(cmdkey, "1") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
 					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_lefturn,3);
 					hu_aap_enc_send (0,AA_CH_TOU, cd_lefturn, sizeof(cd_lefturn));
-				}
-				
-				if (strcmp(cmdkey, "2") == 0) {
+				} else if (strcmp(cmdkey, "2") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
 					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_rightturn,3);
 					hu_aap_enc_send (0,AA_CH_TOU, cd_rightturn, sizeof(cd_rightturn));
-				}
-
-				printf("\n # %s #\n",cmdkey);
-
-				if (strcmp(cmdkey, "return") == 0) {
+				} else if (strcmp(cmdkey, "return") == 0) {
 					printf("\n enter pressed \n");
 					clock_gettime(CLOCK_REALTIME, &tp);
 					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_enter1,3);
 					hu_aap_enc_send (0,AA_CH_TOU, cd_enter1, sizeof(cd_enter1));
-					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_enter2,3);
-					hu_aap_enc_send (0,AA_CH_TOU, cd_enter2, sizeof(cd_enter2));
-				}
-
-				if (strcmp(cmdkey, "backspace") == 0) {
+				} else if (strcmp(cmdkey, "backspace") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
 					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_back1,3);
 					hu_aap_enc_send (0,AA_CH_TOU, cd_back1, sizeof(cd_back1));
+				}
+				
+				printf("\n # %s #\n",cmdkey);
+				break;
+
+			case SDL_KEYUP:
+				key = &event.key;
+				cmdkey = SDL_GetKeyName( key->keysym.sym );
+				if (strcmp(cmdkey, "up") == 0) {
+					clock_gettime(CLOCK_REALTIME, &tp);
+					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_up2,3);
+					hu_aap_enc_send (0,AA_CH_TOU, cd_up2, sizeof(cd_up2));
+				} else if (strcmp(cmdkey, "down") == 0) {
+					clock_gettime(CLOCK_REALTIME, &tp);
+					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_down2,3);
+					hu_aap_enc_send (0,AA_CH_TOU, cd_down2, sizeof(cd_down2));
+				} else if (strcmp(cmdkey, "left") == 0) {
+					clock_gettime(CLOCK_REALTIME, &tp);
+					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_left2,3);
+					hu_aap_enc_send (0,AA_CH_TOU, cd_left2, sizeof(cd_left2));
+				} else if (strcmp(cmdkey, "right") == 0) {
+					clock_gettime(CLOCK_REALTIME, &tp);
+					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_right2,3);
+					hu_aap_enc_send (0,AA_CH_TOU, cd_right2, sizeof(cd_right2));
+				} else if (strcmp(cmdkey, "return") == 0) {
+					printf("\n enter released \n");
+					clock_gettime(CLOCK_REALTIME, &tp);
+					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_enter2,3);
+					hu_aap_enc_send (0,AA_CH_TOU, cd_enter2, sizeof(cd_enter2));
+				} else if (strcmp(cmdkey, "backspace") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
 					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_back2,3);
 					hu_aap_enc_send (0,AA_CH_TOU, cd_back2, sizeof(cd_back2));
 				}
-																
-				break;
-			case SDL_KEYUP:
+
 				PrintKeyInfo( &event.key );
 				break;
 
-		case SDL_QUIT:
-			printf("Quitting...\n");
-			g_main_loop_quit(app->loop);
-//			SDL_Quit();
-			return FALSE;
-			break;
-		}
+			case SDL_QUIT:
+				printf("Quitting...\n");
+				g_main_loop_quit(app->loop);
+		//			SDL_Quit();
+				return FALSE;
+				break;
+			}
 	}
 	
 //  CHECK NIGHT MODE	
@@ -721,66 +719,6 @@ gboolean sdl_poll_event(gpointer data)
 	
 	return TRUE;
 }
-
-
-
-
-
-gboolean commander_poll_event(gpointer data)
-{
-	
-	gst_app_t *app = (gst_app_t *)data;
-		
-	SDL_Event event;
-	SDL_MouseButtonEvent *mbevent;
-	int ret;
-
-	if (SDL_PollEvent(&event) >= 0) {
-		switch (event.type) {
-		case SDL_MOUSEMOTION:	
-			break;
-		case SDL_MOUSEBUTTONDOWN:
-			mbevent = &event.button;
-			if (mbevent->button == SDL_BUTTON_LEFT) {
-				ret = aa_touch_event(ACTION_DOWN, (int)((float)mbevent->x ), (int)((float)mbevent->y));
-				if (ret == -1) {
-					g_main_loop_quit(app->loop);
-					SDL_Quit();
-					return FALSE;
-				}
-			}
-			break;
-		case SDL_MOUSEBUTTONUP:
-			mbevent = &event.button;
-			if (mbevent->button == SDL_BUTTON_LEFT) {
-				ret = aa_touch_event(ACTION_UP, (int)((float)mbevent->x), (int)((float)mbevent->y));
-				if (ret == -1) {
-					g_main_loop_quit(app->loop);
-					SDL_Quit();
-					return FALSE;
-				}
-			} else if (mbevent->button == SDL_BUTTON_RIGHT) {
-				printf("Quitting...\n");
-				g_main_loop_quit(app->loop);
-//				SDL_Quit();
-				return FALSE;
-			}
-			break;
-		case SDL_QUIT:
-			printf("Quitting...\n");
-			g_main_loop_quit(app->loop);
-//			SDL_Quit();
-			return FALSE;
-			break;
-		}
-	}
-	
-	return TRUE;
-}
-
-
-
-
 
 static gboolean on_sig_received (gpointer data)
 {
