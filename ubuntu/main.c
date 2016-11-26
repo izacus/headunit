@@ -10,6 +10,7 @@
 
 #include "hu_uti.h"
 #include "hu_aap.h"
+#include "hu_keycodes.h"
 
 typedef struct {
 	GMainLoop *loop;
@@ -524,38 +525,6 @@ int nightmode = 0;
         printf( "\n" );
     }
 
-//COMMANDER
-//UP:
-uint8_t cd_up1[] = { 0x80, 0x01, 0x08, 0xa8, 0xfc, 0xe1, 0xde, 0xf8, 0x87, 0xd3, 0xc3, 0x14, 0x22, 0x0a, 0x0a, 0x08, 0x08, 0x13, 0x10, 0x01, 0x18, 0x00, 0x20, 0x00 };
-uint8_t cd_up2[] = { 0x80, 0x01, 0x08, 0xe8, 0xfe, 0xdb, 0xba, 0xf9, 0x87, 0xd3, 0xc3, 0x14, 0x22, 0x0a, 0x0a, 0x08, 0x08, 0x13, 0x10, 0x00, 0x18, 0x00, 0x20, 0x00 };
-
-//DOWN:
-uint8_t cd_down1[] = { 0x80, 0x01, 0x08, 0xe8, 0xbb, 0xbe, 0xad, 0xde, 0x87, 0xd3, 0xc3, 0x14, 0x22, 0x0a, 0x0a, 0x08, 0x08, 0x14, 0x10, 0x01, 0x18, 0x00, 0x20, 0x00 };
-uint8_t cd_down2[] = { 0x80, 0x01, 0x08, 0xf8, 0x93, 0xd8, 0xe9, 0xde, 0x87, 0xd3, 0xc3, 0x14, 0x22, 0x0a, 0x0a, 0x08, 0x08, 0x14, 0x10, 0x00, 0x18, 0x00, 0x20, 0x00 };
-
-//LEFT:
-uint8_t cd_left1[] = { 0x80, 0x01, 0x08, 0xe8, 0xf2, 0x97, 0xab, 0x86, 0x88, 0xd3, 0xc3, 0x14, 0x22, 0x0a, 0x0a, 0x08, 0x08, 0x15, 0x10, 0x01, 0x18, 0x00, 0x20, 0x00 };
-uint8_t cd_left2[] = { 0x80, 0x01, 0x08, 0xc8, 0xdd, 0xd0, 0x86, 0x87, 0x88, 0xd3, 0xc3, 0x14, 0x22, 0x0a, 0x0a, 0x08, 0x08, 0x15, 0x10, 0x00, 0x18, 0x00, 0x20, 0x00 };
-
-//RIGHT
-uint8_t cd_right1[] = { 0x80, 0x01, 0x08, 0xc0, 0xc4, 0xe5, 0x86, 0xed, 0x87, 0xd3, 0xc3, 0x14, 0x22, 0x0a, 0x0a, 0x08, 0x08, 0x15, 0x10, 0x01, 0x18, 0x00, 0x20, 0x00 };
-uint8_t cd_right2[] = { 0x80, 0x01, 0x08, 0xc8, 0xeb, 0xc3, 0xbb, 0xed, 0x87, 0xd3, 0xc3, 0x14, 0x22, 0x0a, 0x0a, 0x08, 0x08, 0x15, 0x10, 0x00, 0x18, 0x00, 0x20, 0x00 };
-
-//LEFT turn
-uint8_t cd_lefturn[] = { -128,0x01,0x08,0,0,0,0,0,0,0,0,0x14,0x32,0x11,0x0A,0x0F,0x08,-128,-128,0x04,0x10,-1,-1,-1,-1,-1,-1,-1,-1,-1,0x01 };
-
-//RIGHT turn
-uint8_t cd_rightturn[] =  { -128,0x01,0x08,0,0,0,0,0,0,0,0,0x14,0x32,0x08,0x0A,0x06,0x08,-128,-128,0x04,0x10,0x01 };
-
-//BACK
-uint8_t cd_back1[]  =  { -128,0x01,0x08,0,0,0,0,0,0,0,0,0x14,0x22,0x0A,0x0A,0x08,0x08,0x04,0x10,0x01,0x18,0x00,0x20,0x00 };
-uint8_t cd_back2[]  =  { -128,0x01,0x08,0,0,0,0,0,0,0,0,0x14,0x22,0x0A,0x0A,0x08,0x08,0x04,0x10,0x00,0x18,0x00,0x20,0x00 };
-
-//ENTER
-uint8_t cd_enter1[] =  { -128,0x01,0x08,0,0,0,0,0,0,0,0,0x14,0x22,0x0A,0x0A,0x08,0x08,0x17,0x10,0x01,0x18,0x00,0x20,0x00 };
-uint8_t cd_enter2[] =  { -128,0x01,0x08,0,0,0,0,0,0,0,0,0x14,0x22,0x0A,0x0A,0x08,0x08,0x17,0x10,0x00,0x18,0x00,0x20,0x00 };
-
-
 gboolean sdl_poll_event(gpointer data)
 {
 	gst_app_t *app = (gst_app_t *)data;
@@ -619,37 +588,37 @@ gboolean sdl_poll_event(gpointer data)
 				cmdkey = SDL_GetKeyName( key->keysym.sym );
 				if (strcmp(cmdkey, "up") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_up1,3);
-					hu_aap_enc_send (0,AA_CH_TOU, cd_up1, sizeof(cd_up1));
+					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_UP_DOWN,3);
+					hu_aap_enc_send (0,AA_CH_TOU, KEY_UP_DOWN, sizeof(KEY_UP_DOWN));
 				} else if (strcmp(cmdkey, "down") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_down1,3);
-					hu_aap_enc_send (0,AA_CH_TOU, cd_down1, sizeof(cd_down1));
+					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_DOWN_DOWN,3);
+					hu_aap_enc_send (0,AA_CH_TOU, KEY_DOWN_DOWN, sizeof(KEY_DOWN_DOWN));
 				} else if (strcmp(cmdkey, "left") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_left1,3);
-					hu_aap_enc_send (0,AA_CH_TOU, cd_left1, sizeof(cd_left1));
+					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_LEFT_DOWN,3);
+					hu_aap_enc_send (0,AA_CH_TOU, KEY_LEFT_DOWN, sizeof(KEY_LEFT_DOWN));
 				} else if (strcmp(cmdkey, "right") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_right1,3);
-					hu_aap_enc_send (0,AA_CH_TOU, cd_right1, sizeof(cd_right1));
+					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_RIGHT_DOWN,3);
+					hu_aap_enc_send (0,AA_CH_TOU, KEY_RIGHT_DOWN, sizeof(KEY_RIGHT_DOWN));
 				} else if (strcmp(cmdkey, "1") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_lefturn,3);
-					hu_aap_enc_send (0,AA_CH_TOU, cd_lefturn, sizeof(cd_lefturn));
+					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_ROTATE_LEFT,3);
+					hu_aap_enc_send (0,AA_CH_TOU, KEY_ROTATE_LEFT, sizeof(KEY_ROTATE_LEFT));
 				} else if (strcmp(cmdkey, "2") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_rightturn,3);
-					hu_aap_enc_send (0,AA_CH_TOU, cd_rightturn, sizeof(cd_rightturn));
+					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_ROTATE_RIGHT,3);
+					hu_aap_enc_send (0,AA_CH_TOU, KEY_ROTATE_RIGHT, sizeof(KEY_ROTATE_RIGHT));
 				} else if (strcmp(cmdkey, "return") == 0) {
 					printf("\n enter pressed \n");
 					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_enter1,3);
-					hu_aap_enc_send (0,AA_CH_TOU, cd_enter1, sizeof(cd_enter1));
+					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_ENTER_DOWN,3);
+					hu_aap_enc_send (0,AA_CH_TOU, KEY_ENTER_DOWN, sizeof(KEY_ENTER_DOWN));
 				} else if (strcmp(cmdkey, "backspace") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_back1,3);
-					hu_aap_enc_send (0,AA_CH_TOU, cd_back1, sizeof(cd_back1));
+					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_BACK_DOWN,3);
+					hu_aap_enc_send (0,AA_CH_TOU, KEY_BACK_DOWN, sizeof(KEY_BACK_DOWN));
 				}
 				
 				printf("\n # %s #\n",cmdkey);
@@ -660,29 +629,29 @@ gboolean sdl_poll_event(gpointer data)
 				cmdkey = SDL_GetKeyName( key->keysym.sym );
 				if (strcmp(cmdkey, "up") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_up2,3);
-					hu_aap_enc_send (0,AA_CH_TOU, cd_up2, sizeof(cd_up2));
+					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_UP_UP,3);
+					hu_aap_enc_send (0,AA_CH_TOU, KEY_UP_UP, sizeof(KEY_UP_UP));
 				} else if (strcmp(cmdkey, "down") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_down2,3);
-					hu_aap_enc_send (0,AA_CH_TOU, cd_down2, sizeof(cd_down2));
+					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_DOWN_UP,3);
+					hu_aap_enc_send (0,AA_CH_TOU, KEY_DOWN_UP, sizeof(KEY_DOWN_UP));
 				} else if (strcmp(cmdkey, "left") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_left2,3);
-					hu_aap_enc_send (0,AA_CH_TOU, cd_left2, sizeof(cd_left2));
+					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_LEFT_UP,3);
+					hu_aap_enc_send (0,AA_CH_TOU, KEY_LEFT_UP, sizeof(KEY_LEFT_UP));
 				} else if (strcmp(cmdkey, "right") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_right2,3);
-					hu_aap_enc_send (0,AA_CH_TOU, cd_right2, sizeof(cd_right2));
+					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_RIGHT_UP,3);
+					hu_aap_enc_send (0,AA_CH_TOU, KEY_RIGHT_UP, sizeof(KEY_RIGHT_UP));
 				} else if (strcmp(cmdkey, "return") == 0) {
 					printf("\n enter released \n");
 					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_enter2,3);
-					hu_aap_enc_send (0,AA_CH_TOU, cd_enter2, sizeof(cd_enter2));
+					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_ENTER_UP,3);
+					hu_aap_enc_send (0,AA_CH_TOU, KEY_ENTER_UP, sizeof(KEY_ENTER_UP));
 				} else if (strcmp(cmdkey, "backspace") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,cd_back2,3);
-					hu_aap_enc_send (0,AA_CH_TOU, cd_back2, sizeof(cd_back2));
+					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_BACK_UP,3);
+					hu_aap_enc_send (0,AA_CH_TOU, KEY_BACK_UP, sizeof(KEY_BACK_UP));
 				}
 
 				PrintKeyInfo( &event.key );
