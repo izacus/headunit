@@ -325,29 +325,6 @@ static size_t uleb128_encode(uint64_t value, uint8_t *data)
 	return enc_size;
 }
 
-static size_t varint_encode (uint64_t val, uint8_t *ba, int idx) {
-	
-	if (val >= 0x7fffffffffffffff) {
-		return 1;
-	}
-
-	uint64_t left = val;
-	int idx2 = 0;
-	
-	for (idx2 = 0; idx2 < 9; idx2 ++) {
-		ba [idx+idx2] = (uint8_t) (0x7f & left);
-		left = left >> 7;
-		if (left == 0) {
-			return (idx2 + 1);
-		}
-		else if (idx2 < 9 - 1) {
-			ba [idx+idx2] |= 0x80;
-		}
-	}
-	
-	return 9;
-}
-
 #define ACTION_DOWN	0
 #define ACTION_UP	1
 #define ACTION_MOVE	2
@@ -549,8 +526,10 @@ gboolean sdl_poll_event(gpointer data)
 	char* cmdkey;
 
 	struct timespec tp;
-
 	int ret;
+
+	uint8_t key_buffer[512];
+	int key_buffer_len = 0;
 
 	if (SDL_PollEvent(&event) >= 0) {
 		switch (event.type) {
@@ -588,37 +567,57 @@ gboolean sdl_poll_event(gpointer data)
 				cmdkey = SDL_GetKeyName( key->keysym.sym );
 				if (strcmp(cmdkey, "up") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_UP_DOWN,3);
-					hu_aap_enc_send (0,AA_CH_TOU, KEY_UP_DOWN, sizeof(KEY_UP_DOWN));
+					key_buffer_len = hu_fill_button_message(key_buffer, tp.tv_sec * 1000000000l + tp.tv_nsec, HUIB_UP, 1);
+					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);
 				} else if (strcmp(cmdkey, "down") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_DOWN_DOWN,3);
-					hu_aap_enc_send (0,AA_CH_TOU, KEY_DOWN_DOWN, sizeof(KEY_DOWN_DOWN));
+					key_buffer_len = hu_fill_button_message(key_buffer, tp.tv_sec * 1000000000l + tp.tv_nsec, HUIB_DOWN, 1);
+					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);
 				} else if (strcmp(cmdkey, "left") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_LEFT_DOWN,3);
-					hu_aap_enc_send (0,AA_CH_TOU, KEY_LEFT_DOWN, sizeof(KEY_LEFT_DOWN));
+					key_buffer_len = hu_fill_button_message(key_buffer, tp.tv_sec * 1000000000l + tp.tv_nsec, HUIB_LEFT, 1);
+					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);
 				} else if (strcmp(cmdkey, "right") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_RIGHT_DOWN,3);
-					hu_aap_enc_send (0,AA_CH_TOU, KEY_RIGHT_DOWN, sizeof(KEY_RIGHT_DOWN));
-				} else if (strcmp(cmdkey, "1") == 0) {
-					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_ROTATE_LEFT,3);
-					hu_aap_enc_send (0,AA_CH_TOU, KEY_ROTATE_LEFT, sizeof(KEY_ROTATE_LEFT));
-				} else if (strcmp(cmdkey, "2") == 0) {
-					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_ROTATE_RIGHT,3);
-					hu_aap_enc_send (0,AA_CH_TOU, KEY_ROTATE_RIGHT, sizeof(KEY_ROTATE_RIGHT));
+					key_buffer_len = hu_fill_button_message(key_buffer, tp.tv_sec * 1000000000l + tp.tv_nsec, HUIB_RIGHT, 1);
+					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);				
 				} else if (strcmp(cmdkey, "return") == 0) {
 					printf("\n enter pressed \n");
 					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_ENTER_DOWN,3);
-					hu_aap_enc_send (0,AA_CH_TOU, KEY_ENTER_DOWN, sizeof(KEY_ENTER_DOWN));
+					key_buffer_len = hu_fill_button_message(key_buffer, tp.tv_sec * 1000000000l + tp.tv_nsec, HUIB_ENTER, 1);
+					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);
 				} else if (strcmp(cmdkey, "backspace") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_BACK_DOWN,3);
-					hu_aap_enc_send (0,AA_CH_TOU, KEY_BACK_DOWN, sizeof(KEY_BACK_DOWN));
+					key_buffer_len = hu_fill_button_message(key_buffer, tp.tv_sec * 1000000000l + tp.tv_nsec, HUIB_BACK, 1);
+					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);
+				} else if (strcmp(cmdkey, "m") == 0) {
+					clock_gettime(CLOCK_REALTIME, &tp);
+					key_buffer_len = hu_fill_button_message(key_buffer, tp.tv_sec * 1000000000l + tp.tv_nsec, HUIB_MIC, 1);
+					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);
+				} else if (strcmp(cmdkey, "space") == 0) {
+					clock_gettime(CLOCK_REALTIME, &tp);
+					key_buffer_len = hu_fill_button_message(key_buffer, tp.tv_sec * 1000000000l + tp.tv_nsec, HUIB_PLAYPAUSE, 1);
+					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);
+				} else if (strcmp(cmdkey, "p") == 0) {
+					clock_gettime(CLOCK_REALTIME, &tp);
+					key_buffer_len = hu_fill_button_message(key_buffer, tp.tv_sec * 1000000000l + tp.tv_nsec, HUIB_PHONE, 1);
+					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);
+				} else if (strcmp(cmdkey, "n") == 0) {
+					clock_gettime(CLOCK_REALTIME, &tp);
+					key_buffer_len = hu_fill_button_message(key_buffer, tp.tv_sec * 1000000000l + tp.tv_nsec, HUIB_NEXT, 1);
+					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);
+				} else if (strcmp(cmdkey, "b") == 0) {
+					clock_gettime(CLOCK_REALTIME, &tp);
+					key_buffer_len = hu_fill_button_message(key_buffer, tp.tv_sec * 1000000000l + tp.tv_nsec, HUIB_PREV, 1);
+					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);
+				} else if (strcmp(cmdkey, "1") == 0) {
+					clock_gettime(CLOCK_REALTIME, &tp);
+					key_buffer_len = hu_fill_button_message(key_buffer, tp.tv_sec * 1000000000l + tp.tv_nsec, HUIB_ROTATE_LEFT, 1);
+					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);
+				} else if (strcmp(cmdkey, "2") == 0) {
+					clock_gettime(CLOCK_REALTIME, &tp);
+					key_buffer_len = hu_fill_button_message(key_buffer, tp.tv_sec * 1000000000l + tp.tv_nsec, HUIB_ROTATE_RIGHT, 1);
+					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);
 				}
 				
 				printf("\n # %s #\n",cmdkey);
@@ -629,29 +628,49 @@ gboolean sdl_poll_event(gpointer data)
 				cmdkey = SDL_GetKeyName( key->keysym.sym );
 				if (strcmp(cmdkey, "up") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_UP_UP,3);
-					hu_aap_enc_send (0,AA_CH_TOU, KEY_UP_UP, sizeof(KEY_UP_UP));
+					key_buffer_len = hu_fill_button_message(key_buffer, tp.tv_sec * 1000000000l + tp.tv_nsec, HUIB_UP, 0);
+					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);
 				} else if (strcmp(cmdkey, "down") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_DOWN_UP,3);
-					hu_aap_enc_send (0,AA_CH_TOU, KEY_DOWN_UP, sizeof(KEY_DOWN_UP));
+					key_buffer_len = hu_fill_button_message(key_buffer, tp.tv_sec * 1000000000l + tp.tv_nsec, HUIB_DOWN, 0);
+					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);
 				} else if (strcmp(cmdkey, "left") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_LEFT_UP,3);
-					hu_aap_enc_send (0,AA_CH_TOU, KEY_LEFT_UP, sizeof(KEY_LEFT_UP));
+					key_buffer_len = hu_fill_button_message(key_buffer, tp.tv_sec * 1000000000l + tp.tv_nsec, HUIB_LEFT, 0);
+					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);
 				} else if (strcmp(cmdkey, "right") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_RIGHT_UP,3);
-					hu_aap_enc_send (0,AA_CH_TOU, KEY_RIGHT_UP, sizeof(KEY_RIGHT_UP));
+					key_buffer_len = hu_fill_button_message(key_buffer, tp.tv_sec * 1000000000l + tp.tv_nsec, HUIB_RIGHT, 0);
+					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);				
 				} else if (strcmp(cmdkey, "return") == 0) {
-					printf("\n enter released \n");
+					printf("\n enter pressed \n");
 					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_ENTER_UP,3);
-					hu_aap_enc_send (0,AA_CH_TOU, KEY_ENTER_UP, sizeof(KEY_ENTER_UP));
+					key_buffer_len = hu_fill_button_message(key_buffer, tp.tv_sec * 1000000000l + tp.tv_nsec, HUIB_ENTER, 0);
+					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);
 				} else if (strcmp(cmdkey, "backspace") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
-					varint_encode(tp.tv_sec * 1000000000 +tp.tv_nsec,KEY_BACK_UP,3);
-					hu_aap_enc_send (0,AA_CH_TOU, KEY_BACK_UP, sizeof(KEY_BACK_UP));
+					key_buffer_len = hu_fill_button_message(key_buffer, tp.tv_sec * 1000000000l + tp.tv_nsec, HUIB_BACK, 0);
+					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);
+				} else if (strcmp(cmdkey, "m") == 0) {
+					clock_gettime(CLOCK_REALTIME, &tp);
+					key_buffer_len = hu_fill_button_message(key_buffer, tp.tv_sec * 1000000000l + tp.tv_nsec, HUIB_MIC, 0);
+					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);
+				} else if (strcmp(cmdkey, "space") == 0) {
+					clock_gettime(CLOCK_REALTIME, &tp);
+					key_buffer_len = hu_fill_button_message(key_buffer, tp.tv_sec * 1000000000l + tp.tv_nsec, HUIB_PLAYPAUSE, 0);
+					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);
+				} else if (strcmp(cmdkey, "p") == 0) {
+					clock_gettime(CLOCK_REALTIME, &tp);
+					key_buffer_len = hu_fill_button_message(key_buffer, tp.tv_sec * 1000000000l + tp.tv_nsec, HUIB_PHONE, 0);
+					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);
+				} else if (strcmp(cmdkey, "n") == 0) {
+					clock_gettime(CLOCK_REALTIME, &tp);
+					key_buffer_len = hu_fill_button_message(key_buffer, tp.tv_sec * 1000000000l + tp.tv_nsec, HUIB_NEXT, 0);
+					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);
+				} else if (strcmp(cmdkey, "b") == 0) {
+					clock_gettime(CLOCK_REALTIME, &tp);
+					key_buffer_len = hu_fill_button_message(key_buffer, tp.tv_sec * 1000000000l + tp.tv_nsec, HUIB_PREV, 0);
+					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);
 				}
 
 				PrintKeyInfo( &event.key );

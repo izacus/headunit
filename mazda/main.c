@@ -14,6 +14,7 @@
 
 #include "hu_uti.h"
 #include "hu_aap.h"
+#include "hu_keycodes.h"
 
 #define EVENT_DEVICE_TS    "/dev/input/filtered-touchscreen0"
 #define EVENT_DEVICE_CMD   "/dev/input/event1"
@@ -662,50 +663,6 @@ static gboolean delayedShouldDisplayTrue(gpointer data)
 
 	return FALSE;
 }
-
-typedef enum
-{
-    HUIB_UP = 0x13,
-    HUIB_DOWN = 0x14,
-    HUIB_LEFT = 0x15,
-    HUIB_RIGHT = 0x16,
-    HUIB_BACK = 0x04,
-    HUIB_ENTER = 0x17,
-    HUIB_MIC = 0x54,
-    HUIB_PLAYPAUSE = 0x55,
-    HUIB_NEXT = 0x57,
-    HUIB_PREV = 0x58,
-    HUIB_PHONE = 0x5,
-    HUIB_START = 126,
-    HUIB_STOP = 127,
-    
-}  HU_INPUT_BUTTON;
-
-
-static int hu_fill_button_message(uint8_t* buffer, uint64_t timeStamp, HU_INPUT_BUTTON button, int isPress)
-{
-    int buffCount = 0;
-    buffer[buffCount++] = 0x80;
-    buffer[buffCount++] = 0x01;
-    buffer[buffCount++] = 0x08;
-   
-    buffCount += varint_encode(timeStamp, buffer + buffCount, 0);
-    
-    buffer[buffCount++] = 0x22;
-    buffer[buffCount++] = 0x0A;
-    buffer[buffCount++] = 0x0A;
-    buffer[buffCount++] = 0x08;
-    buffer[buffCount++] = 0x08;
-    buffer[buffCount++] = (uint8_t)button;
-    buffer[buffCount++] = 0x10;
-    buffer[buffCount++] = isPress ? 0x01 : 0x00;
-    buffer[buffCount++] = 0x18;
-    buffer[buffCount++] = 0x00;
-    buffer[buffCount++] = 0x20;
-    buffer[buffCount++] = 0x00;
-    return buffCount;
-}
-
 
 static DBusHandlerResult handle_dbus_message(DBusConnection *c, DBusMessage *message, void *p)
 {
