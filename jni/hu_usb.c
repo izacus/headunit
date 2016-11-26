@@ -218,18 +218,14 @@ static int iusb_oap_start(libusb_device *device)
 
     uint8_t req_type = USB_SETUP_HOST_TO_DEVICE | USB_SETUP_TYPE_VENDOR | USB_SETUP_RECIPIENT_DEVICE;
     uint8_t req_val = ACC_REQ_SEND_STRING;
-    uint16_t val = 0;
-    uint16_t idx = 0;
     unsigned int tmo = 1000;
 
-    iusb_control_transfer(device_handle, req_type, req_val, val, ACC_IDX_MAN, AAP_VAL_MAN, strlen(AAP_VAL_MAN) + 1, tmo);
-    iusb_control_transfer(device_handle, req_type, req_val, val, ACC_IDX_MOD, AAP_VAL_MOD, strlen(AAP_VAL_MOD) + 1, tmo);
+    iusb_control_transfer(device_handle, req_type, req_val, 0, ACC_IDX_MAN, (uint8_t*)AAP_VAL_MAN, strlen(AAP_VAL_MAN) + 1, tmo);
+    iusb_control_transfer(device_handle, req_type, req_val, 0, ACC_IDX_MOD, (uint8_t*)AAP_VAL_MOD, strlen(AAP_VAL_MOD) + 1, tmo);
 
     logd("Accessory IDs sent");
     req_val = ACC_REQ_START;
-    val = 0;
-    idx = 0;
-    if (iusb_control_transfer(device_handle, req_type, req_val, val, idx, NULL, 0, tmo) < 0)
+    if (iusb_control_transfer(device_handle, req_type, req_val, 0, 0, NULL, 0, tmo) < 0)
     {
         loge("Error Accessory mode start request sent");
         return RESULT_FAIL;
@@ -335,7 +331,7 @@ static int device_supports_accessory_mode(libusb_device *device)
     uint8_t req_type = USB_SETUP_DEVICE_TO_HOST | USB_SETUP_TYPE_VENDOR | USB_SETUP_RECIPIENT_DEVICE;
     uint8_t req_val = ACC_REQ_GET_PROTOCOL; // 52 == get protocol request
 
-    result = iusb_control_transfer(device_handle, req_type, req_val, 0, 0, &version_data, sizeof(version_data), 100);
+    result = iusb_control_transfer(device_handle, req_type, req_val, 0, 0, version_data, sizeof(version_data), 100);
     libusb_close(device_handle);
 
     if (result != 0)
