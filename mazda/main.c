@@ -327,29 +327,6 @@ static size_t uleb128_encode(uint64_t value, uint8_t *data)
 	return enc_size;
 }
 
-static size_t varint_encode (uint64_t val, uint8_t *ba, int idx) {
-	
-	if (val >= 0x7fffffffffffffff) {
-		return 1;
-	}
-
-	uint64_t left = val;
-	int idx2 = 0;
-	
-	for (idx2 = 0; idx2 < 9; idx2 ++) {
-		ba [idx+idx2] = (uint8_t) (0x7f & left);
-		left = left >> 7;
-		if (left == 0) {
-			return (idx2 + 1);
-		}
-		else if (idx2 < 9 - 1) {
-			ba [idx+idx2] |= 0x80;
-		}
-	}
-	
-	return 9;
-}
-
 #define ACTION_DOWN	0
 #define ACTION_UP	1
 #define ACTION_MOVE	2
