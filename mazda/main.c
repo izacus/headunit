@@ -726,7 +726,7 @@ static DBusHandlerResult handle_dbus_message(DBusConnection *c, DBusMessage *mes
                     if (event.value == 1) {
                         printf("KEY_M\n");
                         keyTempBuffer = malloc(512);
-                        keyTempSize = hu_fill_button_message(keyTempBuffer, timestamp, HIUB_ROTATE_RIGHT, event.value == 1);
+                        keyTempSize = hu_fill_button_message(keyTempBuffer, timestamp, HUIB_ROTATE_RIGHT, event.value == 1);
                         queueSend(0, AA_CH_TOU, keyTempBuffer, keyTempSize, TRUE);
                     }
                     break;
