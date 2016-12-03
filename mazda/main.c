@@ -224,7 +224,7 @@ static int gst_pipeline_init(gst_app_t *app)
 
     gst_init(NULL, NULL);
 
-    app->pipeline = (GstPipeline*)gst_parse_launch("appsrc name=mysrc is-live=true block=false max-latency=1000000 ! h264parse ! vpudec low-latency=true framedrop=true framedrop-level-mask=0x200 ! mfw_isink name=mysink axis-left=0 axis-top=0 disp-width=840 disp-height=480 max-lateness=1000000000 sync=false async=false", &error);
+    app->pipeline = (GstPipeline*)gst_parse_launch("appsrc name=mysrc is-live=true block=false max-latency=1000000 ! h264parse ! vpudec low-latency=true framedrop=true framedrop-level-mask=0x200 ! mfw_isink name=mysink axis-left=0 axis-top=0 disp-width=800 disp-height=480 max-lateness=1000000000 sync=false async=false", &error);
 
     if (error != NULL) {
         printf("could not construct pipeline: %s\n", error->message);
