@@ -11,10 +11,10 @@
 #include <poll.h>
 
 
-
 #include "hu_uti.h"
 #include "hu_aap.h"
 #include "hu_keycodes.h"
+#include "hu_sensors.h"
 
 #define EVENT_DEVICE_TS    "/dev/input/filtered-touchscreen0"
 #define EVENT_DEVICE_CMD   "/dev/input/event1"
@@ -452,7 +452,7 @@ static void read_mic_data (GstElement * sink)
     }
 } 
 
-int nightmode = 0;
+static int nightmode = 0;
 
 gboolean touch_poll_event(gpointer data)
 {
@@ -809,85 +809,75 @@ static void * input_thread(void *app) {
     }
 }
 
-static void * nightmode_thread(void *app) 
+static void* nightmode_thread(void *app) 
 {
+	// Initialize HMI bus
+	DBusConnection *hmi_bus;
+	DBusError error;
 
-    // Initialize HMI bus
-    DBusConnection *hmi_bus;
-    DBusError error;
+	hmi_bus = dbus_connection_open(HMI_BUS_ADDRESS, &error);
 
-    hmi_bus = dbus_connection_open(HMI_BUS_ADDRESS, &error);
+	if (!hmi_bus) {
+		printf("DBUS: failed to connect to HMI bus: %s: %s\n", error.name, error.message);
+	}
 
-    if (!hmi_bus) {
-        printf("DBUS: failed to connect to HMI bus: %s: %s\n", error.name, error.message);
-    }
+	if (!dbus_bus_register(hmi_bus, &error)) {
+		printf("DBUS: failed to register with HMI bus: %s: %s\n", error.name, error.message);
+	}
 
-    if (!dbus_bus_register(hmi_bus, &error)) {
-        printf("DBUS: failed to register with HMI bus: %s: %s\n", error.name, error.message);
-    }
+	// Wait for mainloop to start
+	ms_sleep(100);
 
-    // Wait for mainloop to start
-    ms_sleep(100);
+	while (g_main_loop_is_running (mainloop)) {
 
-    while (g_main_loop_is_running (mainloop)) {
+		DBusMessage *msg = dbus_message_new_method_call("com.jci.BLM_TIME", "/com/jci/BLM_TIME", "com.jci.BLM_TIME", "GetClock");
+		DBusPendingCall *pending = NULL;
 
-        DBusMessage *msg = dbus_message_new_method_call("com.jci.BLM_TIME", "/com/jci/BLM_TIME", "com.jci.BLM_TIME", "GetClock");
-        DBusPendingCall *pending = NULL;
+		if (!msg) {
+			printf("DBUS: failed to create message \n");
+		}
 
-        if (!msg) {
-            printf("DBUS: failed to create message \n");
-        }
+		if (!dbus_connection_send_with_reply(hmi_bus, msg, &pending, -1)) {
+			printf("DBUS: failed to send message \n");
+		}
 
-        if (!dbus_connection_send_with_reply(hmi_bus, msg, &pending, -1)) {
-            printf("DBUS: failed to send message \n");
-        }
+		dbus_connection_flush(hmi_bus);
+		dbus_message_unref(msg);
 
-        dbus_connection_flush(hmi_bus);
-        dbus_message_unref(msg);
+		dbus_pending_call_block(pending);
+		msg = dbus_pending_call_steal_reply(pending);
+		if (!msg) {
+			printf("DBUS: received null reply \n");
+		}
 
-        dbus_pending_call_block(pending);
-        msg = dbus_pending_call_steal_reply(pending);
-        if (!msg) {
-            printf("DBUS: received null reply \n");
-        }
+		dbus_uint32_t nm_hour;
+		dbus_uint32_t nm_min;
+		dbus_uint32_t nm_timestamp;
+		dbus_uint64_t nm_calltimestamp;
+		if (!dbus_message_get_args(msg, &error, DBUS_TYPE_UINT32, &nm_hour,
+					DBUS_TYPE_UINT32, &nm_min,
+					DBUS_TYPE_UINT32, &nm_timestamp,
+					DBUS_TYPE_UINT64, &nm_calltimestamp,
+					DBUS_TYPE_INVALID)) {
+			printf("DBUS: failed to get result %s: %s\n", error.name, error.message);
+		}
 
-        dbus_uint32_t nm_hour;
-        dbus_uint32_t nm_min;
-        dbus_uint32_t nm_timestamp;
-        dbus_uint64_t nm_calltimestamp;
-        if (!dbus_message_get_args(msg, &error, DBUS_TYPE_UINT32, &nm_hour,
-                    DBUS_TYPE_UINT32, &nm_min,
-                    DBUS_TYPE_UINT32, &nm_timestamp,
-                    DBUS_TYPE_UINT64, &nm_calltimestamp,
-                    DBUS_TYPE_INVALID)) {
-            printf("DBUS: failed to get result %s: %s\n", error.name, error.message);
-        }
+		dbus_message_unref(msg);
 
-        dbus_message_unref(msg);
+		int nightmodenow = 1;
 
-        int nightmodenow = 1;
+		if (nm_hour >= 6 && nm_hour <= 18)
+			nightmodenow = 0;
 
-        if (nm_hour >= 6 && nm_hour <= 18)
-            nightmodenow = 0;
+		if (nightmode != nightmodenow) {
+			nightmode = nightmodenow;
+			uint8_t* nm_data = malloc(sizeof(uint8_t) * 6);
+			int size = hu_fill_night_mode_message(nm_data, sizeof(uint8_t) * 6, nightmode);
+			queueSend(0, AA_CH_SEN, nm_data, size, TRUE); 	// Send Sensor Night mode
+		}
 
-        if (nightmode != nightmodenow) {
-            nightmode = nightmodenow;
-            byte* rspds = malloc(sizeof(byte) * 6);
-            rspds[0] = -128; 
-            rspds[1] = 0x03;
-            rspds[2] = 0x52; 
-            rspds[3] = 0x02;
-            rspds[4] = 0x08;
-            if (nightmode == 0)
-                rspds[5]= 0x00;
-            else
-                rspds[5] = 0x01;
-
-            queueSend(0,AA_CH_SEN, rspds, sizeof (byte) * 6, TRUE); 	// Send Sensor Night mode
-        }
-
-        sleep(600);		
-    }
+		sleep(600);
+	}
 }
 
 

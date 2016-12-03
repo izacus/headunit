@@ -10,7 +10,9 @@
 
 #include "hu_uti.h"
 #include "hu_aap.h"
+
 #include "hu_keycodes.h"
+#include "hu_sensors.h"
 
 typedef struct {
 	GMainLoop *loop;
@@ -468,39 +470,39 @@ static void read_mic_data (GstElement * sink)
 	}
 }
 
-int nightmode = 0;
+static int nightmode = 0;
 
 
-    /* Print all information about a key event */
-    void PrintKeyInfo( SDL_KeyboardEvent *key ){
-        /* Is it a release or a press? */
-        if( key->type == SDL_KEYUP )
-            printf( "Release:- " );
-        else
-            printf( "Press:- " );
+/* Print all information about a key event */
+void PrintKeyInfo( SDL_KeyboardEvent *key ){
+	/* Is it a release or a press? */
+	if( key->type == SDL_KEYUP )
+		printf( "Release:- " );
+	else
+		printf( "Press:- " );
 
-        /* Print the hardware scancode first */
-        printf( "Scancode: 0x%02X", key->keysym.scancode );
-        /* Print the name of the key */
-        printf( ", Name: %s", SDL_GetKeyName( key->keysym.sym ) );
-        /* We want to print the unicode info, but we need to make */
-        /* sure its a press event first (remember, release events */
-        /* don't have unicode info                                */
-        if( key->type == SDL_KEYDOWN ){
-            /* If the Unicode value is less than 0x80 then the    */
-            /* unicode value can be used to get a printable       */
-            /* representation of the key, using (char)unicode.    */
-            printf(", Unicode: " );
-            if( key->keysym.unicode < 0x80 && key->keysym.unicode > 0 ){
-                printf( "%c (0x%04X)", (char)key->keysym.unicode,
-                        key->keysym.unicode );
-            }
-            else{
-                printf( "? (0x%04X)", key->keysym.unicode );
-            }
-        }
-        printf( "\n" );
-    }
+	/* Print the hardware scancode first */
+	printf( "Scancode: 0x%02X", key->keysym.scancode );
+	/* Print the name of the key */
+	printf( ", Name: %s", SDL_GetKeyName( key->keysym.sym ) );
+	/* We want to print the unicode info, but we need to make */
+	/* sure its a press event first (remember, release events */
+	/* don't have unicode info                                */
+	if( key->type == SDL_KEYDOWN ){
+		/* If the Unicode value is less than 0x80 then the    */
+		/* unicode value can be used to get a printable       */
+		/* representation of the key, using (char)unicode.    */
+		printf(", Unicode: " );
+		if( key->keysym.unicode < 0x80 && key->keysym.unicode > 0 ){
+			printf( "%c (0x%04X)", (char)key->keysym.unicode,
+					key->keysym.unicode );
+		}
+		else{
+			printf( "? (0x%04X)", key->keysym.unicode );
+		}
+	}
+	printf( "\n" );
+}
 
 gboolean sdl_poll_event(gpointer data)
 {
@@ -527,6 +529,7 @@ gboolean sdl_poll_event(gpointer data)
 
 	struct timespec tp;
 	int ret;
+	int new_nightmode = nightmode;
 
 	uint8_t key_buffer[512];
 	int key_buffer_len = 0;
@@ -663,14 +666,16 @@ gboolean sdl_poll_event(gpointer data)
 					clock_gettime(CLOCK_REALTIME, &tp);
 					key_buffer_len = hu_fill_button_message(key_buffer, tp.tv_sec * 1000000000l + tp.tv_nsec, HUIB_PHONE, 0);
 					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);
-				} else if (strcmp(cmdkey, "n") == 0) {
+				} else if (strcmp(cmdkey, ",") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
 					key_buffer_len = hu_fill_button_message(key_buffer, tp.tv_sec * 1000000000l + tp.tv_nsec, HUIB_NEXT, 0);
 					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);
-				} else if (strcmp(cmdkey, "b") == 0) {
+				} else if (strcmp(cmdkey, ".") == 0) {
 					clock_gettime(CLOCK_REALTIME, &tp);
 					key_buffer_len = hu_fill_button_message(key_buffer, tp.tv_sec * 1000000000l + tp.tv_nsec, HUIB_PREV, 0);
 					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);
+				} else if (strcmp(cmdkey, "n") == 0) {
+					new_nightmode = !nightmode;
 				}
 
 				PrintKeyInfo( &event.key );
@@ -685,24 +690,12 @@ gboolean sdl_poll_event(gpointer data)
 			}
 	}
 	
-//  CHECK NIGHT MODE	
-	time_t rawtime;
-	struct tm *timenow;
-
-	time( &rawtime );
-	timenow = localtime( &rawtime );
-	
-	int nightmodenow = 1;
-	
-	if (timenow->tm_hour >= 6 && timenow->tm_hour <= 18)
-		nightmodenow = 0;
-	
-	if (nightmode != nightmodenow) {
-		nightmode = nightmodenow;
-		byte rspds [] = {-128, 0x03, 0x52, 0x02, 0x08, 0x01}; 	// Day = 0, Night = 1 
-		if (nightmode == 0)
-			rspds[5]= 0x00;
-		hu_aap_enc_send (0,AA_CH_SEN, rspds, sizeof (rspds)); 	// Send Sensor Night mode
+	//  CHECK NIGHT MODE	
+	if (nightmode != new_nightmode) {
+		nightmode = new_nightmode;
+		uint8_t nm_data[6];
+		int size = hu_fill_night_mode_message(nm_data, 6, nightmode);
+		hu_aap_enc_send(0, AA_CH_SEN, nm_data, size);
 	}
 	
 	return TRUE;
