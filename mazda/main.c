@@ -219,41 +219,38 @@ static int gst_pipeline_init(gst_app_t *app)
 {
     GstBus *bus;
     GstStateChangeReturn state_ret;
-    
+
     GError *error = NULL;
 
     gst_init(NULL, NULL);
 
-//	app->pipeline = (GstPipeline*)gst_parse_launch("appsrc name=mysrc is-live=true block=false max-latency=1000000 ! h264parse ! vpudec low-latency=true framedrop=true framedrop-level-mask=0x200 ! mfw_v4lsink max-lateness=1000000000 sync=false async=false", &error);
+    app->pipeline = (GstPipeline*)gst_parse_launch("appsrc name=mysrc is-live=true block=false max-latency=1000000 ! h264parse ! vpudec low-latency=true framedrop=true framedrop-level-mask=0x200 ! mfw_isink name=mysink axis-left=0 axis-top=0 disp-width=840 disp-height=480 max-lateness=1000000000 sync=false async=false", &error);
 
-    app->pipeline = (GstPipeline*)gst_parse_launch("appsrc name=mysrc is-live=true block=false max-latency=1000000 ! h264parse ! vpudec low-latency=true framedrop=true framedrop-level-mask=0x200 ! mfw_isink name=mysink axis-left=25 axis-top=0 disp-width=751 disp-height=480 max-lateness=1000000000 sync=false async=false", &error);
-        
     if (error != NULL) {
         printf("could not construct pipeline: %s\n", error->message);
         g_clear_error (&error);	
         return -1;
     }
-    
+
     bus = gst_pipeline_get_bus(app->pipeline);
     gst_bus_add_watch(bus, (GstBusFunc)bus_callback, app);
     gst_object_unref(bus);
 
     app->src = (GstAppSrc*)gst_bin_get_by_name (GST_BIN (app->pipeline), "mysrc");
     app->sink = (GstElement*)gst_bin_get_by_name (GST_BIN (app->pipeline), "mysink");
-    
+
     gst_app_src_set_stream_type(app->src, GST_APP_STREAM_TYPE_STREAM);
 
     g_signal_connect(app->src, "need-data", G_CALLBACK(start_feed), app);
-        
     g_signal_connect(app->src, "enough-data", G_CALLBACK(stop_feed), app);
 
     aud_pipeline = gst_parse_launch("appsrc name=audsrc is-live=true block=false max-latency=1000000 ! audio/x-raw-int, signed=true, endianness=1234, depth=16, width=16, rate=48000, channels=2 ! volume volume=0.4 ! alsasink ",&error);
 
     if (error != NULL) {
         printf("could not construct pipeline: %s\n", error->message);
-        g_clear_error (&error);	
+        g_clear_error (&error);
         return -1;
-    }	
+    }
 
     aud_src = gst_bin_get_by_name (GST_BIN (aud_pipeline), "audsrc");
     
@@ -460,25 +457,25 @@ int nightmode = 0;
 gboolean touch_poll_event(gpointer data)
 {
     int mic_ret = hu_aap_mic_get ();
-    
+
     if (mic_change_state == 0 && mic_ret == 2) {
         printf("SHAI1 : Mic Started\n");
         mic_change_state = 2;
         gst_element_set_state (mic_pipeline, GST_STATE_PLAYING);
     }
-        
+
     if (mic_change_state == 2 && mic_ret == 1) {
         printf("SHAI1 : Mic Stopped\n");
         mic_change_state = 0;
         gst_element_set_state (mic_pipeline, GST_STATE_READY);
-    }	
-    
+    }
+
     struct input_event event[64];
     const size_t ev_size = sizeof(struct input_event);
     const size_t buffer_size = ev_size * 64;
     ssize_t size;
     gst_app_t *app = (gst_app_t *)data;
-    
+
     fd_set set;
     struct timeval timeout;
     int unblocked;
@@ -519,16 +516,7 @@ gboolean touch_poll_event(gpointer data)
             case EV_ABS:
                 switch (event[i].code) {
                     case ABS_MT_POSITION_X:
-                        {
-                            //account for letterboxing
-                            printf("input x %i\n", event[i].value);
-                            float floatPixel = ((event[i].value - 100) / 4095.0f) * 800.0f;
-                            const floatBorder = 25.0f / 800.0f;
-                            floatPixel = (floatPixel / 750.0f) - floatBorder;
-                                                        
-                            mTouch.x = (int)(floatPixel * 800.0f);
-                            printf("touch x %i\n", mTouch.x);
-                        }
+			mTouch.x = event[i].value * 800/4095;
                         break;
                     case ABS_MT_POSITION_Y:
                         mTouch.y = event[i].value * 480/4095;
