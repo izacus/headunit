@@ -11,9 +11,9 @@
 #include <poll.h>
 
 
-
 #include "hu_uti.h"
 #include "hu_aap.h"
+#include "hu_sensors.h"
 
 #define EVENT_DEVICE_TS    "/dev/input/filtered-touchscreen0"
 #define EVENT_DEVICE_CMD   "/dev/input/event1"
@@ -477,7 +477,7 @@ static void read_mic_data (GstElement * sink)
 	}
 } 
 
-int nightmode = 0;
+static int nightmode = 0;
 
 gboolean touch_poll_event(gpointer data)
 {
@@ -935,21 +935,12 @@ static void * nightmode_thread(void *app)
 
 		if (nightmode != nightmodenow) {
 			nightmode = nightmodenow;
-			byte* rspds = malloc(sizeof(byte) * 6);
-			rspds[0] = -128; 
-			rspds[1] = 0x03;
-			rspds[2] = 0x52; 
-			rspds[3] = 0x02;
-			rspds[4] = 0x08;
-			if (nightmode == 0)
-				rspds[5]= 0x00;
-			else
-				rspds[5] = 0x01;
-
-			queueSend(0,AA_CH_SEN, rspds, sizeof (byte) * 6, TRUE); 	// Send Sensor Night mode
+			uint8_t* nm_data = malloc(sizeof(uint8_t) * 6);
+			int size = hu_fill_night_mode_message(nm_data, sizeof(uint8_t) * 6, nightmode);
+			queueSend(0, AA_CH_SEN, nm_data, size, TRUE); 	// Send Sensor Night mode
 		}
 
-		sleep(600);		
+		sleep(600);
 	}
 }
 
