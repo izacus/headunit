@@ -1,0 +1,12 @@
+syntax = "proto2";
+
+package HU;
+
+message SensorEvent {
+
+    message DayNightMode {
+        required bool isNight = 1;
+    }
+
+    repeated DayNightMode nightMode = 10;
+}
