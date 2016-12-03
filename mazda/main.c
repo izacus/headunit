@@ -452,8 +452,6 @@ static void read_mic_data (GstElement * sink)
     }
 } 
 
-static int nightmode = 0;
-
 gboolean touch_poll_event(gpointer data)
 {
     int mic_ret = hu_aap_mic_get ();
@@ -809,6 +807,9 @@ static void * input_thread(void *app) {
     }
 }
 
+
+static int nightmode = 0;
+
 static void* nightmode_thread(void *app) 
 {
 	// Initialize HMI bus
@@ -830,7 +831,7 @@ static void* nightmode_thread(void *app)
 
 	while (g_main_loop_is_running (mainloop)) {
 
-		DBusMessage *msg = dbus_message_new_method_call("com.jci.BLM_TIME", "/com/jci/BLM_TIME", "com.jci.BLM_TIME", "GetClock");
+		DBusMessage *msg = dbus_message_new_method_call("com.jci.navi2NNG", "/com/jci/navi2NNG", "com.jci.navi2NNG", "GetDayNightMode");
 		DBusPendingCall *pending = NULL;
 
 		if (!msg) {
@@ -850,25 +851,16 @@ static void* nightmode_thread(void *app)
 			printf("DBUS: received null reply \n");
 		}
 
-		dbus_uint32_t nm_hour;
-		dbus_uint32_t nm_min;
-		dbus_uint32_t nm_timestamp;
-		dbus_uint64_t nm_calltimestamp;
-		if (!dbus_message_get_args(msg, &error, DBUS_TYPE_UINT32, &nm_hour,
-					DBUS_TYPE_UINT32, &nm_min,
-					DBUS_TYPE_UINT32, &nm_timestamp,
-					DBUS_TYPE_UINT64, &nm_calltimestamp,
+		dbus_uint32_t nm_daynightmode;
+		if (!dbus_message_get_args(msg, &error, DBUS_TYPE_UINT32, &nm_daynightmode,
 					DBUS_TYPE_INVALID)) {
 			printf("DBUS: failed to get result %s: %s\n", error.name, error.message);
 		}
 
 		dbus_message_unref(msg);
 
-		int nightmodenow = 1;
-
-		if (nm_hour >= 6 && nm_hour <= 18)
-			nightmodenow = 0;
-
+		// Possible values on DBUS are - 0x00 DAY, 0x01 NIGHT, 0x02 AUTO
+		int nightmodenow = (nm_daynightmode == 1);
 		if (nightmode != nightmodenow) {
 			nightmode = nightmodenow;
 			uint8_t* nm_data = malloc(sizeof(uint8_t) * 6);
@@ -876,7 +868,7 @@ static void* nightmode_thread(void *app)
 			queueSend(0, AA_CH_SEN, nm_data, size, TRUE); 	// Send Sensor Night mode
 		}
 
-		sleep(600);
+		sleep(1000);
 	}
 }
 
