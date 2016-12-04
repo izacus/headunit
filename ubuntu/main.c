@@ -676,6 +676,22 @@ gboolean sdl_poll_event(gpointer data)
 					hu_aap_enc_send (0,AA_CH_TOU, key_buffer, key_buffer_len);
 				} else if (strcmp(cmdkey, "n") == 0) {
 					new_nightmode = !nightmode;
+				} else if (strcmp(cmdkey, "l") == 0) {
+					uint8_t buffer[1024];
+					hu_location_t loc;
+					struct timeval tv;
+					gettimeofday(&tv, NULL);
+
+					loc.timestamp = tv.tv_sec * 1000 + (tv.tv_usec / 1000);
+					loc.latitude = 543333330;
+					loc.longitude = 101333330;
+					loc.accuracy = 100000;
+					loc.altitude_valid = false;
+					loc.speed = 110000;
+					loc.bearing = 10000000;
+
+					int buffer_len = hu_fill_location_message(buffer, sizeof(buffer), loc);
+					hu_aap_enc_send(0, AA_CH_SEN, buffer, buffer_len);
 				}
 
 				PrintKeyInfo( &event.key );
