@@ -17,6 +17,8 @@
 #include "hu_keycodes.h"
 #include "hu_sensors.h"
 
+#include "gps/mzd_gps.h"
+
 #define EVENT_DEVICE_TS    "/dev/input/filtered-touchscreen0"
 #define EVENT_DEVICE_CMD   "/dev/input/event1"
 #define EVENT_TYPE      EV_ABS
@@ -515,7 +517,7 @@ gboolean touch_poll_event(gpointer data)
             case EV_ABS:
                 switch (event[i].code) {
                     case ABS_MT_POSITION_X:
-			mTouch.x = event[i].value * 800/4095;
+                        mTouch.x = event[i].value * 800/4095;
                         break;
                     case ABS_MT_POSITION_Y:
                         mTouch.y = event[i].value * 480/4095;
@@ -810,61 +812,51 @@ static void * input_thread(void *app) {
 
 
 static int nightmode = -1;
+static uint64_t gps_timestamp = 0;
 
 static void* sensors_thread(void *app) 
 {
-	// Initialize service bus
-	DBusConnection *service_bus;
-	DBusError error;
+    // Initialize service bus
+    DBusConnection *service_bus;
+    DBusError error;
     dbus_error_init(&error);
 
-	service_bus = dbus_connection_open(SERVICE_BUS_ADDRESS, &error);
+    service_bus = dbus_connection_open(SERVICE_BUS_ADDRESS, &error);
 
-	if (!service_bus) {
-		printf("DBUS: failed to connect to SERVICE bus: %s: %s\n", error.name, error.message);
+    if (!service_bus) {
+        printf("DBUS: failed to connect to SERVICE bus: %s: %s\n", error.name, error.message);
         return;
-	}
+    }
 
-	if (!dbus_bus_register(service_bus, &error)) {
-		printf("DBUS: failed to register with SERVICE bus: %s: %s\n", error.name, error.message);
+    if (!dbus_bus_register(service_bus, &error)) {
+        printf("DBUS: failed to register with SERVICE bus: %s: %s\n", error.name, error.message);
         return;
-	}
+    }
 
-	// Wait for mainloop to start
-	ms_sleep(500);
+    // Initialize GPS data collection
+    mzd_gps_start();
 
-	while (g_main_loop_is_running (mainloop)) {
+    // Wait for mainloop to start
+    ms_sleep(500);
 
-		DBusMessage *nm_msg = dbus_message_new_method_call("com.jci.navi2NNG", "/com/jci/navi2NNG", "com.jci.navi2NNG", "GetDayNightMode");
+    while (g_main_loop_is_running (mainloop)) {
+
+        DBusMessage *nm_msg = dbus_message_new_method_call("com.jci.navi2NNG", "/com/jci/navi2NNG", "com.jci.navi2NNG", "GetDayNightMode");
         dbus_message_set_auto_start(nm_msg, TRUE);
         
         DBusPendingCall* nm_pending;
         dbus_connection_send_with_reply(service_bus, nm_msg, &nm_pending, DBUS_TIMEOUT_INFINITE);
-/**        
-        DBusMessage *gps_msg = dbus_message_new_method_call("com.jci.lds.data", "/com/jci/lds/data", "com.jci.lds.data", "GetPosition");
-        dbus_message_set_auto_start(gps_msg, TRUE);
-
-        DBusPendingCall* gps_pending;
-        dbus_connection_send_with_reply(service_bus, gps_msg, &gps_pending, DBUS_TIMEOUT_INFINITE);
-**/
         dbus_connection_flush(service_bus);
-
         dbus_message_unref(nm_msg);
-//        dbus_message_unref(gps_msg);
-
-        // Waith for both pending calls
         dbus_pending_call_block(nm_pending);
-//        dbus_pending_call_block(gps_pending);
-
+        
         nm_msg = dbus_pending_call_steal_reply(nm_pending);
-//        gps_msg = dbus_pending_call_steal_reply(gps_pending);
 
         dbus_pending_call_unref(nm_pending);
-//        dbus_pending_call_unref(gps_pending);
 
         if (nm_msg) {
             // Handle nightmode
-		    dbus_int32_t nm_daynightmode;
+            dbus_int32_t nm_daynightmode;
             dbus_error_init(&error);
     
             if (!dbus_message_get_args(nm_msg, &error, DBUS_TYPE_INT32, &nm_daynightmode, DBUS_TYPE_INVALID)) {
@@ -884,64 +876,21 @@ static void* sensors_thread(void *app)
             dbus_message_unref(nm_msg);
         }
 
-/*
-        if (gps_msg) {
-            // Handle GPS
-            dbus_int32_t gps_accuracy;
-            dbus_uint64_t gps_utcEpochTimestamp;
-            double gps_latitude;
-            double gps_longitude;
-            dbus_int32_t gps_altitude;
-            double gps_heading;
-            double gps_speed;
-            double gps_horizontal_accuracy;
-            double gps_vertical_accuracy;
-            dbus_error_init(&error);
-
-            if (!dbus_message_get_args(gps_msg, &error, 
-                                        DBUS_TYPE_INT32, &gps_accuracy,
-                                        DBUS_TYPE_UINT64, &gps_utcEpochTimestamp,
-                                        DBUS_TYPE_DOUBLE, &gps_latitude,
-                                        DBUS_TYPE_DOUBLE, &gps_longitude,
-                                        DBUS_TYPE_INT32, &gps_altitude,
-                                        DBUS_TYPE_DOUBLE, &gps_heading,
-                                        DBUS_TYPE_DOUBLE, &gps_speed,
-                                        DBUS_TYPE_DOUBLE, &gps_horizontal_accuracy,
-                                        DBUS_TYPE_INVALID)) {
-                printf("DBUS: failed to get GPS result %s: %s\n", error.name, error.message);
-            } else {
-                printf("Location: acc 0x%02x, ts %ld, lat %f, lng %f, alt %d, hea %f, spd %f, h_acc %f, v_acc %f \n",
-                    gps_accuracy, gps_utcEpochTimestamp, gps_latitude, gps_longitude, gps_altitude, gps_heading, gps_speed, gps_horizontal_accuracy, gps_vertical_accuracy);
-                // Check if accuracy is correct - 0x00 means UNKNOWN_POSITION, 0x01 - POSITION_GPS_3D, 0x02 - POSITION_GPS_2D, - 0x03 POSITION_DR
-                if (gps_accuracy == 0x01 || gps_accuracy == 0x02) {
-                    hu_location_t location;
-                    location.timestamp = gps_utcEpochTimestamp;
-                    location.latitude = (int32_t)(gps_latitude * 1E7);
-                    location.longitude = (int32_t)(gps_longitude * 1E7);
-                    location.accuracy = (int32_t)(gps_horizontal_accuracy * 1E3);
-                    location.speed = (int32_t)(gps_speed * 1E3);
-                    location.bearing = (int32_t)(gps_heading * 1E6);
-
-                    // Position 3D means we also have an altitude fix
-                    if (gps_accuracy == 0x01) {
-                        location.altitude_valid = true;
-                        location.altitude = (int32_t)(gps_altitude * 1E2);
-                    } else {
-                        location.altitude_valid = false;
-                        location.altitude = 0;
-                    }
-
-                    uint8_t* buffer = malloc(sizeof(uint8_t) * 1024);
-                    int buffer_len = hu_fill_location_message(buffer, sizeof(uint8_t) * 1024, location);
-                    queueSend(0, AA_CH_SEN, buffer, buffer_len, TRUE);
-                }
+        hu_location_t loc;
+        if (mzd_gps_get_location(&loc) == GPS_POSITION_AVAILABLE) {
+            // Don't send same packets several times
+            if (loc.timestamp != gps_timestamp) {
+                uint8_t* buffer = malloc(sizeof(uint8_t) * 1024);
+                int buffer_len = hu_fill_location_message(buffer, sizeof(uint8_t) * 1024, loc);
+                queueSend(0, AA_CH_SEN, buffer, buffer_len, TRUE);
+                gps_timestamp = loc.timestamp;
             }
+        }
 
-            dbus_message_unref(gps_msg);
-        } */
+        ms_sleep(1000);
+    }
 
-		ms_sleep(1000);
-	}
+    mzd_gps_stop();
 }
 
 
