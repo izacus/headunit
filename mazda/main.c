@@ -18,6 +18,7 @@
 #include "hu_sensors.h"
 
 #include "gps/mzd_gps.h"
+#include "nm/mzd_nightmode.h"
 
 #define EVENT_DEVICE_TS    "/dev/input/filtered-touchscreen0"
 #define EVENT_DEVICE_CMD   "/dev/input/event1"
@@ -26,7 +27,6 @@
 #define EVENT_CODE_Y    ABS_Y
 
 #define HMI_BUS_ADDRESS "unix:path=/tmp/dbus_hmi_socket"
-#define SERVICE_BUS_ADDRESS "unix:path=/tmp/dbus_service_socket"
 
 __asm__(".symver realpath1,realpath1@GLIBC_2.11.1");
 
@@ -811,27 +811,13 @@ static void * input_thread(void *app) {
 }
 
 
-static int nightmode = -1;
+static int nightmode = NM_NO_VALUE;
 static uint64_t gps_timestamp = 0;
 
 static void* sensors_thread(void *app) 
 {
-    // Initialize service bus
-    DBusConnection *service_bus;
-    DBusError error;
-    dbus_error_init(&error);
-
-    service_bus = dbus_connection_open(SERVICE_BUS_ADDRESS, &error);
-
-    if (!service_bus) {
-        printf("DBUS: failed to connect to SERVICE bus: %s: %s\n", error.name, error.message);
-        return;
-    }
-
-    if (!dbus_bus_register(service_bus, &error)) {
-        printf("DBUS: failed to register with SERVICE bus: %s: %s\n", error.name, error.message);
-        return;
-    }
+    // Initialize nightmode data collection
+    mzd_nightmode_start();
 
     // Initialize GPS data collection
     mzd_gps_start();
@@ -841,45 +827,19 @@ static void* sensors_thread(void *app)
 
     while (g_main_loop_is_running (mainloop)) {
 
-        DBusMessage *nm_msg = dbus_message_new_method_call("com.jci.navi2NNG", "/com/jci/navi2NNG", "com.jci.navi2NNG", "GetDayNightMode");
-        dbus_message_set_auto_start(nm_msg, TRUE);
-        
-        DBusPendingCall* nm_pending;
-        dbus_connection_send_with_reply(service_bus, nm_msg, &nm_pending, DBUS_TIMEOUT_INFINITE);
-        dbus_connection_flush(service_bus);
-        dbus_message_unref(nm_msg);
-        dbus_pending_call_block(nm_pending);
-        
-        nm_msg = dbus_pending_call_steal_reply(nm_pending);
-
-        dbus_pending_call_unref(nm_pending);
-
-        if (nm_msg) {
-            // Handle nightmode
-            dbus_int32_t nm_daynightmode;
-            dbus_error_init(&error);
-    
-            if (!dbus_message_get_args(nm_msg, &error, DBUS_TYPE_INT32, &nm_daynightmode, DBUS_TYPE_INVALID)) {
-                printf("DBUS: failed to get result %s: %s\n", error.name, error.message);
-            } else {
-                // Possible values on DBUS are - 0x00 DAY, 0x01 NIGHT, 0x02 AUTO
-                printf("DayNight %d.\n", nm_daynightmode);
-                int nightmodenow = (nm_daynightmode == 1);
-                if (nightmode != nightmodenow) {
-                    nightmode = nightmodenow;
-                    uint8_t* nm_data = malloc(sizeof(uint8_t) * 6);
-                    int size = hu_fill_night_mode_message(nm_data, sizeof(uint8_t) * 6, nightmode);
-                    queueSend(0, AA_CH_SEN, nm_data, size, TRUE); 	// Send Sensor Night mode
-                }
-            }
-
-            dbus_message_unref(nm_msg);
+        int nightmodenow = mzd_is_night_mode_set();
+        if (nightmodenow != NM_NO_VALUE && nightmode != nightmodenow) {
+            nightmode = nightmodenow;
+            uint8_t* nm_data = malloc(sizeof(uint8_t) * 6);
+            int size = hu_fill_night_mode_message(nm_data, sizeof(uint8_t) * 6, nightmode == NM_NIGHT_MODE);
+            queueSend(0, AA_CH_SEN, nm_data, size, TRUE); 	// Send Sensor Night mode
         }
 
         hu_location_t loc;
         if (mzd_gps_get_location(&loc) == GPS_POSITION_AVAILABLE) {
             // Don't send same packets several times
             if (loc.timestamp != gps_timestamp) {
+                printf("[LOC] Time %ld Lat: %d Lng: %d Alt: %d Spd: %d Bear: %d\n", loc.timestamp, loc.latitude, loc.longitude, loc.altitude, loc.speed, loc.bearing);
                 uint8_t* buffer = malloc(sizeof(uint8_t) * 1024);
                 int buffer_len = hu_fill_location_message(buffer, sizeof(uint8_t) * 1024, loc);
                 queueSend(0, AA_CH_SEN, buffer, buffer_len, TRUE);
@@ -890,6 +850,7 @@ static void* sensors_thread(void *app)
         ms_sleep(1000);
     }
 
+    mzd_nightmode_stop();
     mzd_gps_stop();
 }
 

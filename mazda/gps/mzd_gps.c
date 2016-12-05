@@ -6,6 +6,10 @@
 
 #include "minmea.h"
 
+#define LOGTAG "mazda-gps"
+
+#include "hu_uti.h"
+
 static hu_location_t last_known_position = { 0 };
 static pthread_mutex_t pos_mutex;
 static bool running = false;
@@ -22,36 +26,43 @@ void* process_gps() {
     if (fp == NULL) return NULL;
 
     // We get commands in batches so we need to watch to properly group them. 
-    // We'll need RMC, GGA and VTG packet for all the data. They should be sent 
+    // We'll need RMC, GGA packets - RMC carries most data, GGA carries altitude. They should be sent 
     // as part of the same batch. 
     bool got_rmc = false;
     bool got_gga = false;
-    bool got_vtg = false;
 
     hu_location_t pos;
 
     while (running && ((read = getline(&gps_line, &len, fp)) != -1)) {
-        switch(minmea_sentence_id(gps_line, true)) {
+        switch(minmea_sentence_id(gps_line, false)) {
             case MINMEA_SENTENCE_RMC: {
                 // Maybe we didn't get GGA before, dispatch the packet and continue.
                 if (got_rmc) {
                     if (!got_gga) pos.altitude_valid = false;
-                    if (!got_vtg) pos.speed = 0;
                     pthread_mutex_lock(&pos_mutex);
                     last_known_position = pos;
                     pthread_mutex_unlock(&pos_mutex);
+                    memset(&pos, 0, sizeof(pos));
+                    logd("Had to send partial location due to missing GGA!");
                 }
 
                 struct minmea_sentence_rmc frame;
                 if (minmea_parse_rmc(&frame, gps_line)) {
+                    // Check for zero values and skip them
+                    if (frame.latitude.value == 0 || frame.longitude.value == 0) continue;
+
                     struct timespec ts;
                     minmea_gettime(&ts, &frame.date, &frame.time);
                     pos.timestamp = (ts.tv_sec * 1000L) + (ts.tv_nsec / 1000000L);
+
+                    logd("RMC [TS: %ld Lat: %f Lng: %f Spd: %f Cour: %f]",
+                        pos.timestamp, minmea_tofloat(frame.latitude), minmea_tofloat(frame.longitude), minmea_tofloat(frame.speed) * 1.852f, minmea_tofloat(frame.course));
+
                     pos.latitude = (int32_t)(minmea_tocoord(&frame.latitude) * 1E7);
                     pos.longitude = (int32_t)(minmea_tocoord(&frame.longitude) *1E7);
+                    pos.bearing = (int32_t)(minmea_rescale(&frame.course, 1E6));
                     pos.speed = minmea_rescale(&frame.speed, 1E3);
-                    pos.speed = pos.speed * 1852;   // knots to kmh
-                    pos.accuracy = 0;
+                    pos.speed = ((double)pos.speed * 1.852);   // knots to kmh
                     got_rmc = true;
                 }
 
@@ -60,31 +71,24 @@ void* process_gps() {
                 struct minmea_sentence_gga frame;
                 if (minmea_parse_gga(&frame, gps_line)) {
                     if (frame.altitude_units == 'M') {
+                        logd("GGA: [Alt: %f]", minmea_tofloat(frame.altitude));
+
                         pos.altitude_valid = true;
                         pos.altitude = minmea_rescale(&frame.altitude, 1E2);
                     }
                     got_gga = true;
                 }
             } break;
-            case MINMEA_SENTENCE_VTG: {
-                struct minmea_sentence_vtg frame;
-                if (minmea_parse_vtg(&frame, gps_line)) {
-                    pos.speed = minmea_rescale(&frame.speed_kph, 1E3);
-                    pos.bearing = minmea_rescale(&frame.true_track_degrees, 1E6);
-                    got_vtg = true;
-                }
-            } break;
         }
 
-        if (got_gga && got_rmc && got_vtg) {
+        if (got_gga && got_rmc) {
             pthread_mutex_lock(&pos_mutex);
             last_known_position = pos;
             pthread_mutex_unlock(&pos_mutex);
 
-            pos.altitude_valid = false;
+            memset(&pos, 0, sizeof(pos));
             got_gga = false;
             got_rmc = false;
-            got_vtg = false;
         }
     }
 
@@ -96,9 +100,9 @@ int mzd_gps_get_location(hu_location_t* location) {
     pthread_mutex_lock(&pos_mutex);
     if (last_known_position.timestamp > 0) {
         *location = last_known_position;
-        result = POSITION_AVAILABLE;
+        result = GPS_POSITION_AVAILABLE;
     } else {
-        result = POSITION_NOT_AVAILABLE;
+        result = GPS_POSITION_NOT_AVAILABLE;
     }    
     pthread_mutex_unlock(&pos_mutex);
     return result;    

@@ -15,6 +15,7 @@ SRCS =	$(TOP)/jni/hu_aad.c	\
 	$(TOP)/pb/gen/sensors.pb.c \
 	gps/mzd_gps.c \
 	gps/minmea.c \
+	nm/mzd_nightmode.c \
 	main.c
 OBJS = $(SRCS:.c=.o)
 APP = headunit
