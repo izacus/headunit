@@ -1,18 +1,10 @@
+#define LOGTAG "hu_usb"
+#include "hu_usb.h"
+#include "hu_uti.h"                                                  // Utilities
+#include "hu_oap.h"                                                  // Open Accessory Protocol
 
-  //
-
-  #define LOGTAG "hu_usb"
-  #include "hu_uti.h"                                                  // Utilities
-  #include "hu_oap.h"                                                  // Open Accessory Protocol
-
-  int iusb_state = 0; // 0: Initial    1: Startin    2: Started    3: Stoppin    4: Stopped
-
-
-  #ifdef __ANDROID_API__
-  #include <libusb.h>
-  #else
-  #include <libusb.h>
-  #endif
+int iusb_state = 0; // 0: Initial    1: Startin    2: Started    3: Stoppin    4: Stopped
+#include <libusb.h>
 
 //  #ifdef __ANDROID_API__
   #ifndef LIBUSB_LOG_LEVEL_NONE                 
@@ -103,17 +95,17 @@ int     LIBUSB_CALL libusb_bulk_transfer          (libusb_device_handle *dev_han
 
     // Data: 
 
-  struct libusb_device_handle * iusb_dev_hndl      = NULL;
-  libusb_device *               iusb_best_device  = NULL;
-  int   iusb_ep_in          = -1;
-  int   iusb_ep_out         = -1;
+struct libusb_device_handle * iusb_dev_hndl      = NULL;
+libusb_device *               iusb_best_device  = NULL;
+int   iusb_ep_in          = -1;
+int   iusb_ep_out         = -1;
 
-  int   iusb_best_vendor    = 0;
-  int   iusb_best_product   = 0;
-  byte  iusb_curr_man [256] = {0};
-  byte  iusb_best_man [256] = {0};
-  byte  iusb_curr_pro [256] = {0};
-  byte  iusb_best_pro [256] = {0};
+int   iusb_best_vendor    = 0;
+int   iusb_best_product   = 0;
+byte  iusb_curr_man [256] = {0};
+byte  iusb_best_man [256] = {0};
+byte  iusb_curr_pro [256] = {0};
+byte  iusb_best_pro [256] = {0};
 
 struct usbvpid {
     uint16_t vendor;
@@ -264,7 +256,7 @@ if (ms_duration > 400)
 	  
 	  loge ("Done dir: %s  len: %d  bytes_xfrd: %d  total_bytes_xfrd: %d  usb_err: %d (%s)  errno: %d (%s)", dir, len, bytes_xfrd, total_bytes_xfrd, usb_err, iusb_error_get (usb_err), errno, strerror (errno));
 
-      hu_usb_stop ();  // Other errors here are fatal, so stop USB
+      hu_usb_stop();  // Other errors here are fatal, so stop USB
       return (-1);
     }
 

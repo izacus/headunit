@@ -976,16 +976,16 @@ ms: 337, 314                                                                    
     if ((chan == AA_CH_AUD || chan == AA_CH_AU1 || chan == AA_CH_AU2) && (msg_type == 0 || msg_type == 1)) {// || flags == 8 || flags == 9 || flags == 10 ) {         // If Audio Output...
       return (iaap_audio_process (chan, msg_type, flags, buf, len)); // 300 ms @ 48000/sec   samples = 14400     stereo 16 bit results in bytes = 57600
     }
-    else if (chan == AA_CH_VID && msg_type == 0 || msg_type == 1 || flags == 8 || flags == 9 || flags == 10 ) {    // If Video...
+    else if (chan == AA_CH_VID && (msg_type == 0 || msg_type == 1 || flags == 8 || flags == 9 || flags == 10)) {    // If Video...
       return (iaap_video_process (msg_type, flags, buf, len));
     }
-    else if (msg_type >= 0 && msg_type <= 31)
+    else if (msg_type >= 0 && msg_type <= 31) {
       run = 0;
-    else if (msg_type >= 32768 && msg_type <= 32799)
+    } else if (msg_type >= 32768 && msg_type <= 32799) {
       run = 1;
-    else if (msg_type >= 65504 && msg_type <= 65535)
+    } else if (msg_type >= 65504 && msg_type <= 65535) {
       run = 2;
-    else {
+    } else {
       loge ("Unknown msg_type: %d", msg_type);
       return (0);
     }
@@ -1029,17 +1029,12 @@ ms: 337, 314                                                                    
 
     int ret = ihu_tra_stop ();                                           // Stop Transport/USBACC/OAP
     iaap_state = hu_STATE_STOPPED;
-    logd ("  SET: iaap_state: %d (%s)", iaap_state, state_get (iaap_state));
-    
-//    g_free(rx_buf);
-//	thread_cleanup();
+    logd ("  SET: iaap_state: %d (%s)", iaap_state, state_get (iaap_state));    
     return (ret);
   }
 
   int hu_aap_start (byte ep_in_addr, byte ep_out_addr) {                // Starts Transport/USBACC/OAP, then AA protocol w/ VersReq(1), SSL handshake, Auth Complete
 
-//	rx_buf = (byte *)g_malloc(DEFBUF);
-	
     if (iaap_state == hu_STATE_STARTED) {
       loge ("CHECK: iaap_state: %d (%s)", iaap_state, state_get (iaap_state));
       return (0);
@@ -1064,21 +1059,20 @@ ms: 337, 314                                                                    
       return (-1);
     }  
 
-//    byte buf [DEFBUF] = {0};
-	byte *buf = (byte *)g_malloc(DEFBUF);
+	  uint8_t* buf = (byte *)malloc(DEFBUF);
     errno = 0;
     ret = hu_aap_tra_recv (buf, DEFBUF, 1000);                    // Get Rx packet from Transport:    Wait for Version Response
+    
     if (ret <= 0) {
       loge ("Version response recv ret: %d", ret);
-      g_free(buf);
+      free(buf);
       hu_aap_stop ();
       return (-1);
-    }  
+    }
+
     logd ("Version response recv ret: %d", ret);
+    free(buf);
 
-
-	g_free(buf);
-//*
     ret = hu_ssl_handshake ();                                          // Do SSL Client Handshake with AA SSL server
     if (ret) {
       hu_aap_stop ();
@@ -1225,7 +1219,7 @@ http://www.cisco.com/c/en/us/support/docs/security-vpn/secure-socket-layer-ssl/1
 
       have_len -= 4;                                                    // Length starting at byte 4: Unencrypted Message Type or Encrypted data start
       buf += 4;                                                         // buf points to data to be decrypted
-      if (flags & 0x08 != 0x08) {
+      if ((flags & 0x08) != 0x08) {
         loge ("NOT ENCRYPTED !!!!!!!!! have_len: %d  enc_len: %d  buf: %p  chan: %d %s  flags: 0x%x  msg_type: %d", have_len, enc_len, buf, chan, chan_get (chan), flags, msg_type);
         hu_aap_stop ();
         return (-1);
