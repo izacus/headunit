@@ -75,6 +75,9 @@ int hu_log (int prio, const char * tag, const char * func, const char * fmt, ...
 unsigned long ms_get          ();
 unsigned long ms_sleep        (unsigned long ms);
 void hex_dump                 (char * prefix, int width, unsigned char * buf, int len);
+
+int file_get (const char* filename);
+
 uint8_t* vid_write_tail_buf_get(int len);
 uint8_t* vid_read_head_buf_get(int* len);
 uint8_t* aud_write_tail_buf_get(int len);

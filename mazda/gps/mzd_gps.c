@@ -79,6 +79,8 @@ void* process_gps() {
                     got_gga = true;
                 }
             } break;
+            default:
+                break;
         }
 
         if (got_gga && got_rmc) {
@@ -93,6 +95,7 @@ void* process_gps() {
     }
 
     fclose(fp);
+    return NULL;
 }
 
 int mzd_gps_get_location(hu_location_t* location) {
