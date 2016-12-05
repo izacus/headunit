@@ -1,4 +1,5 @@
 #include <glib.h>
+#include <glib-unix.h>
 #include <stdio.h>
 #include <gst/gst.h>
 #include <gst/app/gstappsrc.h>
@@ -6,7 +7,7 @@
 #include <SDL/SDL.h>
 #include <SDL/SDL_syswm.h>
 #include <time.h>
-
+#include <sys/time.h>
 
 #include "hu_uti.h"
 #include "hu_aap.h"
@@ -58,8 +59,8 @@ static gboolean read_data(gst_app_t *app)
 	guint8 *ptr;
 	GstFlowReturn ret;
 	int iret;
-	char *vbuf;
-	char *abuf;
+	uint8_t* vbuf;
+	uint8_t* abuf;
 	int res_len = 0;
 
 	pthread_mutex_lock (&mutexsend);

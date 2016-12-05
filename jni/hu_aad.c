@@ -191,7 +191,7 @@ Channel specified for each service:
       //snprintf (str_buf, sizeof (str_buf), "%1.1d", num);
       int ctr = 0;
       for (ctr = 0; ctr < n - 1; ctr ++)
-        strncat (str_buf, "                    ", sizeof (str_buf));
+        strncat (str_buf, "                    ", sizeof (str_buf) - 1);
 
 
       //unsigned char str_buf2 [256] = {0};
@@ -226,18 +226,13 @@ Channel specified for each service:
 
     if (alen == 0)
       return (rmv);
-    if (alen < 0) {
-      if (log_dmp)
-        loge ("iaad_dmp_arry alen: %ld", alen);
-      return (rmv);
-    }
 
     if (log_dmp) {
       //logd ("iaad_dmp_arry n: %d  num: %d  alen: %ld", n, num, alen); // Dump raw array
       unsigned char str_buf [256] = {0};
       int ctr = 0;
       for (ctr = 0; ctr < n - 1; ctr ++)
-        strncat (str_buf, "                    ", sizeof (str_buf));
+        strncat (str_buf, "                    ", sizeof (str_buf) - 1);
 
       unsigned char str_buf2 [256] = {0};
       snprintf (str_buf2, sizeof (str_buf), "%s%1.1d", str_buf, num);   // Dump raw array
