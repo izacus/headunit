@@ -4,9 +4,16 @@
   #include "hu_uti.h"
   #include "hu_ssl.h"
   #include "hu_aap.h"
+  #include "hu_usb.h"  
 #ifndef NDEBUG
   #include "hu_aad.h"
 #endif
+
+// Those aren't used ATM, so NOOP them
+int hu_tcp_recv(byte * buf, int len, int tmo) { return 0; }                     // Used by hu_aap:hu_aap_tcp_recv ()
+int hu_tcp_send(byte * buf, int len, int tmo) { return 0; }                     // Used by hu_aap:hu_aap_tcp_send ()
+int hu_tcp_stop() { return 0; }                                                 // Used by hu_aap:hu_aap_stop     ()
+int hu_tcp_start(byte ep_in_addr, byte ep_out_addr) { return 0 ;}               // Used by hu_aap:hu_aap_start    ()
 
   int iaap_state = 0; // 0: Initial    1: Startin    2: Started    3: Stoppin    4: Stopped
 
@@ -23,15 +30,6 @@
     }
     return ("UNK");
   }
-#include "hu_usb.h"
-#include "hu_tcp.h"
-
-//dummy functions
-  int hu_tcp_recv  (byte * buf, int len, int tmo) {}                     // Used by hu_aap:hu_aap_tcp_recv ()
-  int hu_tcp_send  (byte * buf, int len, int tmo)  {}                    // Used by hu_aap:hu_aap_tcp_send ()
-  int hu_tcp_stop  () {}                                                 // Used by hu_aap:hu_aap_stop     ()
-  int hu_tcp_start (byte ep_in_addr, byte ep_out_addr) {}                // Used by hu_aap:hu_aap_start    ()
-
 
   int transport_type = 1; // 1=USB 2=WiFi
   int ihu_tra_recv  (byte * buf, int len, int tmo) {

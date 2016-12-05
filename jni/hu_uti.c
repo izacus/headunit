@@ -973,416 +973,259 @@
   }
   
 
-  int pid_get (char * cmd, int start_pid) {
-    DIR  * dp;
-    struct dirent * dirp;
-    FILE * fdc;
-    struct stat sb;
-    int pid = 0;
-    int ret = 0;
-    logd ("pid_get: %s  start_pid: %d", cmd, start_pid);
-
-    errno = 0;
-    if ((dp = opendir ("/proc")) == NULL) {                             // Open the /proc directory. If error...
-      loge ("pid_get: opendir errno: %d (%s)", errno, strerror (errno));
-      return (0);                                                       // Done w/ no process found
-    }
-    while ((dirp = readdir (dp)) != NULL) {                             // For all files/dirs in this directory... (Could terminate with errno set !!)
-      //logd ("pid_get: readdir: %s", dirp->d_name);
-      errno = 0;
-      pid = atoi (dirp->d_name);                                        // pid = directory name string to integer
-      if (pid <= 0) {                                                   // Ignore non-numeric directories
-        //loge ("pid_get: not numeric ret: %d  errno: %d (%s)", pid, errno, strerror (errno));
-        continue;
-      }
-      if (pid < start_pid) {                                            // Ignore PIDs we have already checked. Depends on directories in PID order which seems to always be true
-        //loge ("pid_get: pid < start_pid");
-        continue;
-      }
-
-      //logd ("pid_get: test pid: %d", pid);
-    
-      char fcmdline [DEF_BUF] = "/proc/";
-      strlcat (fcmdline, dirp->d_name, sizeof (fcmdline));
-      errno = 0;
-      ret = stat (fcmdline, & sb);                                      // Get file/dir status.
-      if (ret == -1) {
-        logd ("pid_get: stat errno: %d (%s)", errno, strerror (errno)); // Common: pid_get: stat errno: 2 = ENOENT
-        continue;
-      }
-      if (S_ISDIR (sb.st_mode)) {                                       // If this is a directory...
-        //logd ("pid_get: dir %d", sb.st_mode);
-        char cmdline [DEF_BUF] = {0};
-        strlcat (fcmdline, "/cmdline", sizeof (fcmdline));
-        errno = 0;
-        if ((fdc = fopen (fcmdline, "r")) == NULL) {                    // Open /proc/???/cmdline file read-only, If error...
-          loge ("pid_get: fopen errno: %d (%s)", errno, strerror (errno));
-          continue;
-        }
-        errno = 0;
-        ret = fread (cmdline, sizeof (char), sizeof (cmdline) - 1, fdc);// Read
-        if (ret < 0 || ret > sizeof (cmdline) - 1) {                    // If error...
-          loge ("pid_get fread ret: %d  errno: %d (%s)", ret, errno, strerror (errno));
-          fclose (fdc);
-          continue;
-        }
-        cmdline [ret] = 0;
-        fclose (fdc);
-        int cmd_len = strlen (cmd);
-        ret = strlen (cmdline);                                         // The buffer includes a trailing 0, so adjust ret to actual string length (in case not always true) (Opts after !)
-        //logd ("pid_get: cmdline bytes: %d  cmdline: %s", ret, cmdline);
-
-        if (ret >= cmd_len) {                                           // Eg: ret = strlen ("/bin/a") = 6, cmd_len = strlen ("a") = 1, compare 1 at cmd_line[5]
-
-          if (! strcmp (cmd, & cmdline [ret - cmd_len])) {              // If a matching process name
-            logd ("pid_get: got pid: %d for cmdline: %s  start_pid: %d", pid, cmdline, start_pid);
-            closedir (dp);                                              // Close the directory.
-            return (pid);                                               // SUCCESS: Done w/ pid
-          }
-        }
-      }
-      else if (S_ISREG (sb.st_mode)) {                                  // If this is a regular file...
-        loge ("pid_get: reg %d", sb.st_mode);
-      }
-      else {
-        loge ("pid_get: unk %d", sb.st_mode);
-      }
-    }
-    closedir (dp);                                                      // Close the directory.
-    return (0);                                                         // Done w/ no PID found
-  }
-
-  int kill_gentle_first = 1;
-  int pid_kill (int pid, int brutal, char * cmd_to_verify) {
-    logd ("pid_kill pid: %d  brutal: %d", pid, brutal);
-    int ret = 0;
-    int sig = SIGTERM;
-    if (brutal) {
-      if (kill_gentle_first) {
-        errno = 0;
-        ret = kill (pid, sig);
-        if (ret) {
-          loge ("pid_kill kill_gentle_first kill() errno: %d (%s)", errno, strerror (errno));
-        }
-        else {
-          logd ("pid_kill kill_gentle_first kill() success");
-          errno = 0;
-          int new_pid_check1 = pid_get (cmd_to_verify, pid);
-          if (new_pid_check1 == pid) {
-            loge ("pid_kill kill() success detected but same new_pid_check: %d  errno: %d (%s)", new_pid_check1, errno, strerror (errno));  // Fall through to brutal kill
-          }
-          else {
-            logd ("Full Success pid != new_pid_check1: %d  errno: %d (%s)", new_pid_check1, errno, strerror (errno));
-            return (ret);
-          }
-        }
-      }
-      sig = SIGKILL;
-    }
-    errno = 0;
-    ret = kill (pid, sig);
-    if (ret) {
-      loge ("pid_kill kill() errno: %d (%s)", errno, strerror (errno));
-    }
-    else {
-      logd ("pid_kill kill() success");
-      errno = 0;
-      int new_pid_check2 = pid_get (cmd_to_verify, pid);
-      if (new_pid_check2 == pid)
-        loge ("pid_kill kill() success detected but same new_pid_check2: %d", new_pid_check2);
-      else
-        logd ("pid != new_pid_check: %d  errno: %d (%s)", new_pid_check2, errno, strerror (errno));
-    }
-    return (ret);
-  }
-
-  int killall (char * cmd, int brutal) {                                // Kill all OTHER instances of named process, except our own, if the same
-    int ret = 0;
-    int pid = 0;
-    int our_pid = getpid ();
-    logd ("killall cmd: %s  brutal: %d  our_pid: %d", cmd, brutal, our_pid);
-    int idx = 0;
-    int num_kill_attempts = 0;
-    int max_kill_attempts = 16;                                         // Max of 16 kills (was to prevent blocking if can't kill, now just to limit kills)
-
-    for (idx = 0; idx < max_kill_attempts; idx ++) {                    // For maximum kills...
-
-      pid = pid_get (cmd, pid + 1);                                     // Get PID starting at last found PID + 1
-
-      if (pid == our_pid) {
-        logd ("pid == our_pid");                                        // If us, just log
-      }
-      else if (pid > 0) {
-        ret = pid_kill (pid, brutal, cmd);                              // Else if valid external PID, kill it
-        num_kill_attempts ++;
-      }
-      else {
-        break;                                                          // Else if end of PID search, terminate loop
-      }
-    }
-    logd ("killall num_kill_attempts: %d", num_kill_attempts);
-    return (num_kill_attempts);
-  }
-
-
-
-
 
     // Buffers: Audio, Video, identical code, should generalize
 
-  #define aud_buf_BUFS_SIZE    65536 * 4      // Up to 256 Kbytes
-  int aud_buf_bufs_size = aud_buf_BUFS_SIZE;
+#define aud_buf_BUFS_SIZE    65536 * 4      // Up to 256 Kbytes
+int aud_buf_bufs_size = aud_buf_BUFS_SIZE;
+#define NUM_aud_buf_BUFS   16            // Maximum of NUM_aud_buf_BUFS - 1 in progress; 1 is never used
 
-  #define   NUM_aud_buf_BUFS   16            // Maximum of NUM_aud_buf_BUFS - 1 in progress; 1 is never used
-  int num_aud_buf_bufs = NUM_aud_buf_BUFS;
+int num_aud_buf_bufs = NUM_aud_buf_BUFS;
+uint8_t aud_buf_bufs [NUM_aud_buf_BUFS] [aud_buf_BUFS_SIZE];
+int aud_buf_lens [NUM_aud_buf_BUFS] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-  char aud_buf_bufs [NUM_aud_buf_BUFS] [aud_buf_BUFS_SIZE];
+int aud_buf_buf_tail = 0;    // Tail is next index for writer to write to.   If head = tail, there is no info.
+int aud_buf_buf_head = 0;    // Head is next index for reader to read from.
 
-  int aud_buf_lens [NUM_aud_buf_BUFS] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+int aud_buf_errs = 0;
+int aud_max_bufs = 0;
+int aud_sem_tail = 0;
+int aud_sem_head = 0;
 
-  int aud_buf_buf_tail = 0;    // Tail is next index for writer to write to.   If head = tail, there is no info.
-  int aud_buf_buf_head = 0;    // Head is next index for reader to read from.
+uint8_t* aud_write_tail_buf_get (int len) {                          // Get tail buffer to write to
 
-  int aud_buf_errs = 0;
-  int aud_max_bufs = 0;
-  int aud_sem_tail = 0;
-  int aud_sem_head = 0;
+  if (len > aud_buf_BUFS_SIZE) {
+    loge ("!!!!!!!!!! aud_write_tail_buf_get too big len: %d", len);   // E/aud_write_tail_buf_get(10699): !!!!!!!!!! aud_write_tail_buf_get too big len: 66338
+    return (NULL);
+  }
 
-  char * aud_write_tail_buf_get (int len) {                          // Get tail buffer to write to
+  int bufs = aud_buf_buf_tail - aud_buf_buf_head;
+  if (bufs < 0)                                                       // If underflowed...
+    bufs += num_aud_buf_bufs;                                         // Wrap
+  //logd ("aud_write_tail_buf_get start bufs: %d  head: %d  tail: %d", bufs, aud_buf_buf_head, aud_buf_buf_tail);
 
-    if (len > aud_buf_BUFS_SIZE) {
-      loge ("!!!!!!!!!! aud_write_tail_buf_get too big len: %d", len);   // E/aud_write_tail_buf_get(10699): !!!!!!!!!! aud_write_tail_buf_get too big len: 66338
-      return (NULL);
-    }
+  if (bufs > aud_max_bufs)                                            // If new maximum buffers in progress...
+    aud_max_bufs = bufs;                                              // Save new max
+  if (bufs >= num_aud_buf_bufs - 1) {                                 // If room for another (max = NUM_aud_buf_BUFS - 1)
+    loge ("aud_write_tail_buf_get out of aud_buf_bufs");
+    aud_buf_errs ++;
+    //aud_buf_buf_tail = aud_buf_buf_head = 0;                        // Drop all buffers
+    return (NULL);
+  }
 
-    int bufs = aud_buf_buf_tail - aud_buf_buf_head;
-    if (bufs < 0)                                                       // If underflowed...
-      bufs += num_aud_buf_bufs;                                         // Wrap
-    //logd ("aud_write_tail_buf_get start bufs: %d  head: %d  tail: %d", bufs, aud_buf_buf_head, aud_buf_buf_tail);
-
-    if (bufs > aud_max_bufs)                                            // If new maximum buffers in progress...
-      aud_max_bufs = bufs;                                              // Save new max
-    if (bufs >= num_aud_buf_bufs - 1) {                                 // If room for another (max = NUM_aud_buf_BUFS - 1)
-      loge ("aud_write_tail_buf_get out of aud_buf_bufs");
-      aud_buf_errs ++;
-      //aud_buf_buf_tail = aud_buf_buf_head = 0;                        // Drop all buffers
-      return (NULL);
-    }
-
-    int max_retries = 4;
-    int retries = 0;
-    for (retries = 0; retries < max_retries; retries ++) {
-      aud_sem_tail ++;
-      if (aud_sem_tail == 1)
-        break;
-      aud_sem_tail --;
-      loge ("aud_sem_tail wait");
-      ms_sleep (10);
-    }
-    if (retries >= max_retries) {
-      loge ("aud_sem_tail could not be acquired");
-      return (NULL);
-    }
-
-    if (aud_buf_buf_tail < 0 || aud_buf_buf_tail > num_aud_buf_bufs - 1)   // Protect
-      aud_buf_buf_tail &= num_aud_buf_bufs - 1;
-
-    aud_buf_buf_tail ++;
-
-    if (aud_buf_buf_tail < 0 || aud_buf_buf_tail > num_aud_buf_bufs - 1)
-      aud_buf_buf_tail &= num_aud_buf_bufs - 1;
-
-    char * ret = aud_buf_bufs [aud_buf_buf_tail];
-    aud_buf_lens [aud_buf_buf_tail] = len;
-
-    //logd ("aud_write_tail_buf_get done  ret: %p  bufs: %d  tail len: %d  head: %d  tail: %d", ret, bufs, len, aud_buf_buf_head, aud_buf_buf_tail);
-
+  int max_retries = 4;
+  int retries = 0;
+  for (retries = 0; retries < max_retries; retries ++) {
+    aud_sem_tail ++;
+    if (aud_sem_tail == 1)
+      break;
     aud_sem_tail --;
-
-    return (ret);
+    loge ("aud_sem_tail wait");
+    ms_sleep (10);
+  }
+  if (retries >= max_retries) {
+    loge ("aud_sem_tail could not be acquired");
+    return (NULL);
   }
 
-  char * aud_read_head_buf_get (int * len) {                              // Get head buffer to read from
+  if (aud_buf_buf_tail < 0 || aud_buf_buf_tail > num_aud_buf_bufs - 1)   // Protect
+    aud_buf_buf_tail &= num_aud_buf_bufs - 1;
 
-    if (len == NULL) {
-      loge ("!!!!!!!!!! aud_read_head_buf_get");
-      return (NULL);
-    }
-    * len = 0;
+  aud_buf_buf_tail ++;
 
-    int bufs = aud_buf_buf_tail - aud_buf_buf_head;
-    if (bufs < 0)                                                       // If underflowed...
-      bufs += num_aud_buf_bufs;                                          // Wrap
-    //logd ("aud_read_head_buf_get start bufs: %d  head: %d  tail: %d", bufs, aud_buf_buf_head, aud_buf_buf_tail);
+  if (aud_buf_buf_tail < 0 || aud_buf_buf_tail > num_aud_buf_bufs - 1)
+    aud_buf_buf_tail &= num_aud_buf_bufs - 1;
 
-    if (bufs <= 0) {                                                    // If no buffers are ready...
-      if (ena_log_extra)
-        logd ("aud_read_head_buf_get no aud_buf_bufs");
-      //aud_buf_errs ++;  // Not an error; just no data
-      //aud_buf_buf_tail = aud_buf_buf_head = 0;                          // Drop all buffers
-      return (NULL);
-    }
+  char * ret = aud_buf_bufs [aud_buf_buf_tail];
+  aud_buf_lens [aud_buf_buf_tail] = len;
 
-    int max_retries = 4;
-    int retries = 0;
-    for (retries = 0; retries < max_retries; retries ++) {
-      aud_sem_head ++;
-      if (aud_sem_head == 1)
-        break;
-      aud_sem_head --;
-      loge ("aud_sem_head wait");
-      ms_sleep (10);
-    }
-    if (retries >= max_retries) {
-      loge ("aud_sem_head could not be acquired");
-      return (NULL);
-    }
+  //logd ("aud_write_tail_buf_get done  ret: %p  bufs: %d  tail len: %d  head: %d  tail: %d", ret, bufs, len, aud_buf_buf_head, aud_buf_buf_tail);
 
-    if (aud_buf_buf_head < 0 || aud_buf_buf_head > num_aud_buf_bufs - 1)   // Protect
-      aud_buf_buf_head &= num_aud_buf_bufs - 1;
+  aud_sem_tail --;
 
-    aud_buf_buf_head ++;
+  return (ret);
+}
 
-    if (aud_buf_buf_head < 0 || aud_buf_buf_head > num_aud_buf_bufs - 1)
-      aud_buf_buf_head &= num_aud_buf_bufs - 1;
+uint8_t* aud_read_head_buf_get (int* len) {                              // Get head buffer to read from
 
-    char * ret = aud_buf_bufs [aud_buf_buf_head];
-    * len = aud_buf_lens [aud_buf_buf_head];
+  if (len == NULL) {
+    loge ("!!!!!!!!!! aud_read_head_buf_get");
+    return (NULL);
+  }
+  * len = 0;
 
-    //logd ("aud_read_head_buf_get done  ret: %p  bufs: %d  head len: %d  head: %d  tail: %d", ret, bufs, * len, aud_buf_buf_head, aud_buf_buf_tail);
+  int bufs = aud_buf_buf_tail - aud_buf_buf_head;
+  if (bufs < 0)                                                       // If underflowed...
+    bufs += num_aud_buf_bufs;                                          // Wrap
+  //logd ("aud_read_head_buf_get start bufs: %d  head: %d  tail: %d", bufs, aud_buf_buf_head, aud_buf_buf_tail);
 
+  if (bufs <= 0) {                                                    // If no buffers are ready...
+    if (ena_log_extra)
+      logd ("aud_read_head_buf_get no aud_buf_bufs");
+    //aud_buf_errs ++;  // Not an error; just no data
+    //aud_buf_buf_tail = aud_buf_buf_head = 0;                          // Drop all buffers
+    return (NULL);
+  }
+
+  int max_retries = 4;
+  int retries = 0;
+  for (retries = 0; retries < max_retries; retries ++) {
+    aud_sem_head ++;
+    if (aud_sem_head == 1)
+      break;
     aud_sem_head --;
-
-    return (ret);
+    loge ("aud_sem_head wait");
+    ms_sleep (10);
+  }
+  if (retries >= max_retries) {
+    loge ("aud_sem_head could not be acquired");
+    return (NULL);
   }
 
+  if (aud_buf_buf_head < 0 || aud_buf_buf_head > num_aud_buf_bufs - 1)   // Protect
+    aud_buf_buf_head &= num_aud_buf_bufs - 1;
+
+  aud_buf_buf_head ++;
+
+  if (aud_buf_buf_head < 0 || aud_buf_buf_head > num_aud_buf_bufs - 1)
+    aud_buf_buf_head &= num_aud_buf_bufs - 1;
+
+  char * ret = aud_buf_bufs [aud_buf_buf_head];
+  * len = aud_buf_lens [aud_buf_buf_head];
+
+  //logd ("aud_read_head_buf_get done  ret: %p  bufs: %d  head len: %d  head: %d  tail: %d", ret, bufs, * len, aud_buf_buf_head, aud_buf_buf_tail);
+
+  aud_sem_head --;
+
+  return (ret);
+}
 
 
-  #define vid_buf_BUFS_SIZE    65536 * 4      // Up to 256 Kbytes
-  int vid_buf_bufs_size = vid_buf_BUFS_SIZE;
 
-  #define   NUM_vid_buf_BUFS   16            // Maximum of NUM_vid_buf_BUFS - 1 in progress; 1 is never used
-  int num_vid_buf_bufs = NUM_vid_buf_BUFS;
+#define vid_buf_BUFS_SIZE    65536 * 4      // Up to 256 Kbytes
+int vid_buf_bufs_size = vid_buf_BUFS_SIZE;
 
-  char vid_buf_bufs [NUM_vid_buf_BUFS] [vid_buf_BUFS_SIZE];
+#define NUM_vid_buf_BUFS   16            // Maximum of NUM_vid_buf_BUFS - 1 in progress; 1 is never used
+int num_vid_buf_bufs = NUM_vid_buf_BUFS;
 
-  int vid_buf_lens [NUM_vid_buf_BUFS] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t vid_buf_bufs [NUM_vid_buf_BUFS] [vid_buf_BUFS_SIZE];
 
-  int vid_buf_buf_tail = 0;    // Tail is next index for writer to write to.   If head = tail, there is no info.
-  int vid_buf_buf_head = 0;    // Head is next index for reader to read from.
+int vid_buf_lens [NUM_vid_buf_BUFS] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-  int vid_buf_errs = 0;
-  int vid_max_bufs = 0;
-  int vid_sem_tail = 0;
-  int vid_sem_head = 0;
+int vid_buf_buf_tail = 0;    // Tail is next index for writer to write to.   If head = tail, there is no info.
+int vid_buf_buf_head = 0;    // Head is next index for reader to read from.
 
-  char * vid_write_tail_buf_get (int len) {                          // Get tail buffer to write to
+int vid_buf_errs = 0;
+int vid_max_bufs = 0;
+int vid_sem_tail = 0;
+int vid_sem_head = 0;
 
-    if (len > vid_buf_BUFS_SIZE) {
-      loge ("!!!!!!!!!! vid_write_tail_buf_get too big len: %d", len);   // E/vid_write_tail_buf_get(10699): !!!!!!!!!! vid_write_tail_buf_get too big len: 66338
-      return (NULL);
-    }
+uint8_t* vid_write_tail_buf_get (int len) {                          // Get tail buffer to write to
 
-    int bufs = vid_buf_buf_tail - vid_buf_buf_head;
-    if (bufs < 0)                                                       // If underflowed...
-      bufs += num_vid_buf_bufs;                                         // Wrap
-    //logd ("vid_write_tail_buf_get start bufs: %d  head: %d  tail: %d", bufs, vid_buf_buf_head, vid_buf_buf_tail);
+  if (len > vid_buf_BUFS_SIZE) {
+    loge ("!!!!!!!!!! vid_write_tail_buf_get too big len: %d", len);   // E/vid_write_tail_buf_get(10699): !!!!!!!!!! vid_write_tail_buf_get too big len: 66338
+    return (NULL);
+  }
 
-    if (bufs > vid_max_bufs)                                            // If new maximum buffers in progress...
-      vid_max_bufs = bufs;                                              // Save new max
-    if (bufs >= num_vid_buf_bufs - 1) {                                 // If room for another (max = NUM_vid_buf_BUFS - 1)
-      loge ("vid_write_tail_buf_get out of vid_buf_bufs");
-      vid_buf_errs ++;
-      //vid_buf_buf_tail = vid_buf_buf_head = 0;                        // Drop all buffers
-      return (NULL);
-    }
+  int bufs = vid_buf_buf_tail - vid_buf_buf_head;
+  if (bufs < 0)                                                       // If underflowed...
+    bufs += num_vid_buf_bufs;                                         // Wrap
+  //logd ("vid_write_tail_buf_get start bufs: %d  head: %d  tail: %d", bufs, vid_buf_buf_head, vid_buf_buf_tail);
 
-    int max_retries = 4;
-    int retries = 0;
-    for (retries = 0; retries < max_retries; retries ++) {
-      vid_sem_tail ++;
-      if (vid_sem_tail == 1)
-        break;
-      vid_sem_tail --;
-      loge ("vid_sem_tail wait");
-      ms_sleep (10);
-    }
-    if (retries >= max_retries) {
-      loge ("vid_sem_tail could not be acquired");
-      return (NULL);
-    }
+  if (bufs > vid_max_bufs)                                            // If new maximum buffers in progress...
+    vid_max_bufs = bufs;                                              // Save new max
+  if (bufs >= num_vid_buf_bufs - 1) {                                 // If room for another (max = NUM_vid_buf_BUFS - 1)
+    loge ("vid_write_tail_buf_get out of vid_buf_bufs");
+    vid_buf_errs ++;
+    //vid_buf_buf_tail = vid_buf_buf_head = 0;                        // Drop all buffers
+    return (NULL);
+  }
 
-    if (vid_buf_buf_tail < 0 || vid_buf_buf_tail > num_vid_buf_bufs - 1)   // Protect
-      vid_buf_buf_tail &= num_vid_buf_bufs - 1;
-
-    vid_buf_buf_tail ++;
-
-    if (vid_buf_buf_tail < 0 || vid_buf_buf_tail > num_vid_buf_bufs - 1)
-      vid_buf_buf_tail &= num_vid_buf_bufs - 1;
-
-    char * ret = vid_buf_bufs [vid_buf_buf_tail];
-    vid_buf_lens [vid_buf_buf_tail] = len;
-
-    //logd ("vid_write_tail_buf_get done  ret: %p  bufs: %d  tail len: %d  head: %d  tail: %d", ret, bufs, len, vid_buf_buf_head, vid_buf_buf_tail);
-
+  int max_retries = 4;
+  int retries = 0;
+  for (retries = 0; retries < max_retries; retries ++) {
+    vid_sem_tail ++;
+    if (vid_sem_tail == 1)
+      break;
     vid_sem_tail --;
-
-    return (ret);
+    loge ("vid_sem_tail wait");
+    ms_sleep (10);
+  }
+  if (retries >= max_retries) {
+    loge ("vid_sem_tail could not be acquired");
+    return (NULL);
   }
 
-  char * vid_read_head_buf_get (int * len) {                              // Get head buffer to read from
+  if (vid_buf_buf_tail < 0 || vid_buf_buf_tail > num_vid_buf_bufs - 1)   // Protect
+    vid_buf_buf_tail &= num_vid_buf_bufs - 1;
 
-    if (len == NULL) {
-      loge ("!!!!!!!!!! vid_read_head_buf_get");
-      return (NULL);
-    }
-    * len = 0;
+  vid_buf_buf_tail ++;
 
-    int bufs = vid_buf_buf_tail - vid_buf_buf_head;
-    if (bufs < 0)                                                       // If underflowed...
-      bufs += num_vid_buf_bufs;                                          // Wrap
-    //logd ("vid_read_head_buf_get start bufs: %d  head: %d  tail: %d", bufs, vid_buf_buf_head, vid_buf_buf_tail);
+  if (vid_buf_buf_tail < 0 || vid_buf_buf_tail > num_vid_buf_bufs - 1)
+    vid_buf_buf_tail &= num_vid_buf_bufs - 1;
 
-    if (bufs <= 0) {                                                    // If no buffers are ready...
-      if (ena_log_extra)
-        logd ("vid_read_head_buf_get no vid_buf_bufs");
-      //vid_buf_errs ++;  // Not an error; just no data
-      //vid_buf_buf_tail = vid_buf_buf_head = 0;                          // Drop all buffers
-      return (NULL);
-    }
+  uint8_t* ret = vid_buf_bufs [vid_buf_buf_tail];
+  vid_buf_lens [vid_buf_buf_tail] = len;
 
-    int max_retries = 4;
-    int retries = 0;
-    for (retries = 0; retries < max_retries; retries ++) {
-      vid_sem_head ++;
-      if (vid_sem_head == 1)
-        break;
-      vid_sem_head --;
-      loge ("vid_sem_head wait");
-      ms_sleep (10);
-    }
-    if (retries >= max_retries) {
-      loge ("vid_sem_head could not be acquired");
-      return (NULL);
-    }
+  //logd ("vid_write_tail_buf_get done  ret: %p  bufs: %d  tail len: %d  head: %d  tail: %d", ret, bufs, len, vid_buf_buf_head, vid_buf_buf_tail);
 
-    if (vid_buf_buf_head < 0 || vid_buf_buf_head > num_vid_buf_bufs - 1)   // Protect
-      vid_buf_buf_head &= num_vid_buf_bufs - 1;
+  vid_sem_tail --;
+  return (ret);
+}
 
-    vid_buf_buf_head ++;
+uint8_t* vid_read_head_buf_get (int * len) {                              // Get head buffer to read from
 
-    if (vid_buf_buf_head < 0 || vid_buf_buf_head > num_vid_buf_bufs - 1)
-      vid_buf_buf_head &= num_vid_buf_bufs - 1;
+  if (len == NULL) {
+    loge ("!!!!!!!!!! vid_read_head_buf_get");
+    return (NULL);
+  }
+  * len = 0;
 
-    char * ret = vid_buf_bufs [vid_buf_buf_head];
-    * len = vid_buf_lens [vid_buf_buf_head];
+  int bufs = vid_buf_buf_tail - vid_buf_buf_head;
+  if (bufs < 0)                                                       // If underflowed...
+    bufs += num_vid_buf_bufs;                                          // Wrap
+  //logd ("vid_read_head_buf_get start bufs: %d  head: %d  tail: %d", bufs, vid_buf_buf_head, vid_buf_buf_tail);
 
-    //logd ("vid_read_head_buf_get done  ret: %p  bufs: %d  head len: %d  head: %d  tail: %d", ret, bufs, * len, vid_buf_buf_head, vid_buf_buf_tail);
+  if (bufs <= 0) {                                                    // If no buffers are ready...
+    if (ena_log_extra)
+      logd ("vid_read_head_buf_get no vid_buf_bufs");
+    //vid_buf_errs ++;  // Not an error; just no data
+    //vid_buf_buf_tail = vid_buf_buf_head = 0;                          // Drop all buffers
+    return (NULL);
+  }
 
+  int max_retries = 4;
+  int retries = 0;
+  for (retries = 0; retries < max_retries; retries ++) {
+    vid_sem_head ++;
+    if (vid_sem_head == 1)
+      break;
     vid_sem_head --;
-
-    return (ret);
+    loge ("vid_sem_head wait");
+    ms_sleep (10);
   }
+  if (retries >= max_retries) {
+    loge ("vid_sem_head could not be acquired");
+    return (NULL);
+  }
+
+  if (vid_buf_buf_head < 0 || vid_buf_buf_head > num_vid_buf_bufs - 1)   // Protect
+    vid_buf_buf_head &= num_vid_buf_bufs - 1;
+
+  vid_buf_buf_head ++;
+
+  if (vid_buf_buf_head < 0 || vid_buf_buf_head > num_vid_buf_bufs - 1)
+    vid_buf_buf_head &= num_vid_buf_bufs - 1;
+
+  char * ret = vid_buf_bufs [vid_buf_buf_head];
+  * len = vid_buf_lens [vid_buf_buf_head];
+
+  //logd ("vid_read_head_buf_get done  ret: %p  bufs: %d  head len: %d  head: %d  tail: %d", ret, bufs, * len, vid_buf_buf_head, vid_buf_buf_tail);
+
+  vid_sem_head --;
+
+  return (ret);
+}
 
 
 //#endif  //#ifndef UTILS_INCLUDED

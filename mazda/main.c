@@ -100,8 +100,8 @@ static gboolean read_data(gst_app_t *app)
     guint8 *ptr;
     GstFlowReturn ret;
     int iret;
-    char *vbuf;
-    char *abuf;
+    uint8_t* vbuf;
+    uint8_t* abuf;
     int res_len = 0;
 
     iret = hu_aap_recv_process ();                       
@@ -116,12 +116,10 @@ static gboolean read_data(gst_app_t *app)
     vbuf = vid_read_head_buf_get (&res_len);
 
     if (vbuf != NULL) {
-
         //buffer = gst_buffer_new();
         //gst_buffer_set_data(buffer, vbuf, res_len);
         buffer = gst_buffer_new_and_alloc(res_len);
-        memcpy(GST_BUFFER_DATA(buffer),vbuf,res_len);
-
+        memcpy(GST_BUFFER_DATA(buffer), vbuf, res_len);
         ret = gst_app_src_push_buffer(app->src, buffer);
 
         if(ret !=  GST_FLOW_OK){
@@ -785,7 +783,6 @@ static DBusHandlerResult handle_dbus_message(DBusConnection *c, DBusMessage *mes
 }
 
 static void * input_thread(void *app) {
-
     DBusConnection *hmi_bus;
     DBusError error;
 
@@ -804,10 +801,10 @@ static void * input_thread(void *app) {
     dbus_bus_add_match(hmi_bus, "type='signal',interface='com.jci.bucpsa',member='DisplayMode'", &error);
 
     while (touch_poll_event(app)) {
-        //commander_poll_event(app);		
         dbus_connection_read_write_dispatch(hmi_bus, 100);
-        //ms_sleep(100);
     }
+
+    return NULL;
 }
 
 
@@ -852,6 +849,8 @@ static void* sensors_thread(void *app)
 
     mzd_nightmode_stop();
     mzd_gps_stop();
+
+    return NULL;
 }
 
 
@@ -865,7 +864,7 @@ gboolean myMainLoop(gpointer app)
 
     send_arg* cmd;
 
-    if (cmd = g_async_queue_try_pop(sendqueue))
+    if ((cmd = g_async_queue_try_pop(sendqueue)))
     {
         hu_aap_enc_send(cmd->retry, cmd->chan, cmd->cmd_buf, cmd->cmd_len);
         if(cmd->shouldFree)
@@ -876,13 +875,14 @@ gboolean myMainLoop(gpointer app)
     return TRUE; 
 }
 
-static void * main_thread(void *app) {
-
+static void* main_thread(void *app) {
     ms_sleep(100);
 
     while (mainloop && g_main_loop_is_running (mainloop)) {
         myMainLoop(app);
     }
+
+    return NULL;
 }
 
 
