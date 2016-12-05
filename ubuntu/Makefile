@@ -1,9 +1,7 @@
-#CC=gcc
-#LD=ld
 INCLUDES=`pkg-config --cflags gstreamer-0.10 gstreamer-app-0.10 gstreamer-video-0.10 gstreamer-interfaces-0.10 libcrypto libusb-1.0 openssl`-I$(TOP)/jni -I$(TOP)/pb
 CFLAGS= -g -DDEBUG
-CPPFLAGS=-fPIC
 LFLAGS= -g `pkg-config --libs gstreamer-0.10 gstreamer-app-0.10 gstreamer-video-0.10 gstreamer-interfaces-0.10 libcrypto libusb-1.0 openssl` -lSDL
+
 TOP = ..
 SRCS =	$(TOP)/jni/hu_aad.c	\
 	$(TOP)/jni/hu_aap.c	\
@@ -34,5 +32,9 @@ clean:
 
 depend: $(SRCS)
 	makedepend $^
+
+release: CFLAGS += -g0 -O3 -ffunction-sections -fdata-sections -fvisibility=hidden
+release: LFLAGS += -ffunction-sections -fdata-sections -Wl,--gc-sections
+release: $(APP)
 
 # DO NOT DELETE

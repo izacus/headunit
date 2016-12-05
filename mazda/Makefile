@@ -1,8 +1,7 @@
-#CC=gcc
-#LD=ld
 INCLUDES=`pkg-config --cflags gstreamer-0.10 gstreamer-app-0.10 gstreamer-video-0.10 dbus-1 libcrypto libusb-1.0 openssl`-I$(TOP)/jni -I$(TOP)/pb -I$(TOP)/mazda/gps
-CFLAGS=-fPIC `sdl-config --libs` -O3
-LFLAGS=`pkg-config --libs gstreamer-0.10 gstreamer-app-0.10 gstreamer-video-0.10 dbus-1 libcrypto libusb-1.0 openssl `   -lrt
+CFLAGS=-fPIC `sdl-config --libs` -g
+LFLAGS=`pkg-config --libs gstreamer-0.10 gstreamer-app-0.10 gstreamer-video-0.10 dbus-1 libcrypto libusb-1.0 openssl ` -lrt
+
 TOP = ..
 SRCS =	$(TOP)/jni/hu_aad.c	\
 	$(TOP)/jni/hu_aap.c	\
@@ -18,6 +17,7 @@ SRCS =	$(TOP)/jni/hu_aad.c	\
 	gps/minmea.c \
 	nm/mzd_nightmode.c \
 	main.c
+
 OBJS = $(SRCS:.c=.o)
 APP = headunit
 
@@ -39,5 +39,9 @@ clean:
 
 depend: $(SRCS)
 	makedepend $^
+
+release: CFLAGS += -g0 -O3 -ffunction-sections -fdata-sections -fvisibility=hidden -march=armv7-a -mtune=cortex-a9 -mfpu=neon -mthumb -flto
+release: LFLAGS += -g0 -O3 -ffunction-sections -fdata-sections -Wl,--gc-sections -march=armv7-a -mtune=cortex-a9 -mfpu=neon -mthumb -flto
+release: $(APP)
 
 # DO NOT DELETE
