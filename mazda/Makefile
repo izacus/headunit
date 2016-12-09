@@ -23,6 +23,8 @@ SRCS += $(TOP)/hu/hu_uti.cpp
 SRCS += $(TOP)/hu/hu_tcp.cpp
 SRCS += $(TOP)/hu/generated.arm/hu.pb.cc
 SRCS += nm/mzd_nightmode.cpp
+SRCS += gps/mzd_gps.cpp
+SRCS += gps/minmea.c
 SRCS += main.cpp
 
 OBJS = $(addsuffix .arm.o, $(basename $(SRCS)))
@@ -37,6 +39,9 @@ DEPS_IF = $(addsuffix .arm.d, $(basename $(SRCS_IF)))
 
 #input_filter binary
 APP_IF = input_filter
+
+# Minmea compiles in C99 mode
+gps/minmea.arm.o: CFLAGS += -std=c99 -D_POSIX_C_SOURCE=199309L -D_BSD_SOURCE -D_DEFAULT_SOURCE
 
 all: proto $(APP) $(APP_IF)
 
