@@ -517,13 +517,6 @@ static void input_thread_func(int touchfd, int kbdfd, int quitfd)
                             g_main_loop_quit (gst_app.loop);
                         }
                         break;
-                    case KEY_R:
-                        printf("KEY_R\n");
-                        if (isPressed)
-                        {
-                            g_timeout_add(1, delayedToggleShouldDisplay, NULL);
-                        }
-                        break;
                     }
                     if (scanCode != 0 || scrollAmount != 0)
                     {
