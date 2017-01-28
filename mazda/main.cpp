@@ -159,11 +159,13 @@ static int gst_pipeline_init(gst_app_t *app)
 	gst_init(NULL, NULL);
 
 	//if we have ASPECT_RATIO_FIX, cut off the bottom black bar
-	const char* vid_pipeline_launch = "appsrc name=mysrc is-live=true block=false max-latency=1000000 do-timestamp=true ! queue ! h264parse ! vpudec low-latency=true framedrop=true framedrop-level-mask=0x200 ! mfw_isink name=mysink "
+	const char* vid_pipeline_launch = "appsrc name=mysrc is-live=true block=false max-latency=1000000 do-timestamp=true !"
+	"queue leaky=2 silent=true !"
+	"h264parse ! vpudec low-latency=true framedrop=true framedrop-level-mask=0x200 ! mfw_isink name=mysink "
 	#if ASPECT_RATIO_FIX
-    "axis-left=0 axis-top=-20 disp-width=800 disp-height=520"
+		"axis-left=0 axis-top=-20 disp-width=800 disp-height=520"
 	#else
-	"axis-left=0 axis-top=0 disp-width=800 disp-height=480"
+		"axis-left=0 axis-top=0 disp-width=800 disp-height=480"
 	#endif
 	" max-lateness=1000000000 sync=false async=false";
 
@@ -180,11 +182,13 @@ static int gst_pipeline_init(gst_app_t *app)
 	gst_object_unref(bus);
 
 	vid_src = GST_APP_SRC(gst_bin_get_by_name (GST_BIN (vid_pipeline), "mysrc"));
-    vid_sink = GST_ELEMENT(gst_bin_get_by_name (GST_BIN (vid_pipeline), "mysink"));
+	vid_sink = GST_ELEMENT(gst_bin_get_by_name (GST_BIN (vid_pipeline), "mysink"));
 	
 	gst_app_src_set_stream_type(vid_src, GST_APP_STREAM_TYPE_STREAM);
 
-	aud_pipeline = gst_parse_launch("appsrc name=audsrc is-live=true block=false max-latency=1000000 do-timestamp=true ! audio/x-raw-int, signed=true, endianness=1234, depth=16, width=16, rate=48000, channels=2 ! volume volume=0.4 ! alsasink ",&error);
+	aud_pipeline = gst_parse_launch("appsrc name=audsrc is-live=true block=false max-latency=1000000 do-timestamp=true ! "
+	"audio/x-raw-int, signed=true, endianness=1234, depth=16, width=16, rate=48000, channels=2 !"
+	"queue leaky=2 min-threshold-time=200000000 silent=true ! volume volume=0.4 ! alsasink buffer-time=500000 sync=false",&error);
 
 	if (error != NULL) {
 		printf("could not construct pipeline: %s\n", error->message);
@@ -193,7 +197,6 @@ static int gst_pipeline_init(gst_app_t *app)
 	}	
 
 	aud_src = GST_APP_SRC(gst_bin_get_by_name (GST_BIN (aud_pipeline), "audsrc"));
-	
 	gst_app_src_set_stream_type((GstAppSrc *)aud_src, GST_APP_STREAM_TYPE_STREAM);
 
 
