@@ -189,7 +189,7 @@ static int gst_pipeline_init(gst_app_t *app)
 
 	aud_pipeline = gst_parse_launch("appsrc name=audsrc is-live=true block=false max-latency=1000000 do-timestamp=true ! "
 	"audio/x-raw-int, signed=true, endianness=1234, depth=16, width=16, rate=48000, channels=2 !"
-	"queue leaky=2 min-threshold-time=200000000 silent=true ! volume volume=0.4 ! alsasink buffer-time=500000 sync=false",&error);
+	"queue leaky=2 min-threshold-time=200000000 silent=true ! volume volume=0.4 ! alsasink buffer-time=500000 sync=false async=false",&error);
 
 	if (error != NULL) {
 		printf("could not construct pipeline: %s\n", error->message);
@@ -891,6 +891,8 @@ public:
     virtual void Notify(const std::string& signalName, const std::string& payload) override
     {
         printf("AudioManagerClient::Notify signalName=%s payload=%s\n", signalName.c_str(), payload.c_str());
+
+		// Exit as soon as we see BTHF
         if (waitingForFocusLostEvent && signalName == "audioFocusChangeEvent")
         {
             try
@@ -898,8 +900,16 @@ public:
                 auto result = json::parse(payload);
                 std::string streamName = result["streamName"].get<std::string>();
                 std::string newFocus = result["newFocus"].get<std::string>();
-                if (newFocus == "lost")
-                {
+                if (streamName == "BTHF" && newFocus == "gained") {
+                    // We're getting an incoming call, stop sinks and bail immediately to
+                    // avoid interfering with a call.
+                    gst_element_set_state(vid_pipeline, GST_STATE_PAUSED);
+                    gst_element_set_state(aud_pipeline, GST_STATE_PAUSED);
+                    gst_element_set_state(au1_pipeline, GST_STATE_PAUSED);
+                    loge("INCOMING CALL, EXITING!");
+                    g_main_loop_quit (gst_app.loop);
+                    return;
+                } else if (newFocus == "lost") {
                     auto findIt = streamToSessionIds.find(streamName);
                     if (findIt != streamToSessionIds.end())
                     {
