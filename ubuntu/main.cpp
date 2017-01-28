@@ -112,7 +112,7 @@ gst_pipeline_init(gst_app_t *app) {
         gst_init(NULL, NULL);
 
         const char* vid_launch_str = "appsrc name=mysrc is-live=true block=false max-latency=100000 do-timestamp=true stream-type=stream typefind=true ! "
-                "queue ! "
+                "queue leaky=2 silent=true max-size-buffers=5 ! "
                 "h264parse ! "
                 "avdec_h264 ! "
 #if ASPECT_RATIO_FIX
@@ -141,6 +141,7 @@ gst_pipeline_init(gst_app_t *app) {
 
         aud_pipeline = gst_parse_launch("appsrc name=audsrc is-live=true block=false max-latency=100000 do-timestamp=true ! "
                 "audio/x-raw, signed=true, endianness=1234, depth=16, width=16, rate=48000, channels=2, format=S16LE ! "
+                "queue leaky=0 min-threshold-time=100000000 silent=true !"
                 "alsasink buffer-time=400000 sync=false", &error);
 
         if (error != NULL) {
